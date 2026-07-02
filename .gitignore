@@ -1,0 +1,45 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.env
+.env.local
+
+# Jupyter
+.ipynb_checkpoints/
+
+# 实验产物（科研协议特有）
+code/runs/
+code/outputs/
+code/checkpoints/
+code/wandb/
+code/lightning_logs/
+baseline/runs/
+baseline/outputs/
+baseline/checkpoints/
+*.ckpt
+*.pt
+*.pth
+*.h5
+*.safetensors
+
+# 数据集本体（只 commit 路径与元信息，不 commit 数据）
+data/
+datasets/
+
+# 日志（注意：不写 logs/，避免在大小写不敏感的文件系统上误伤协议的 LOGS/）
+*.log
+code/logs/
+baseline/logs/
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PROJECT_DIR=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; if command -v python3 >/dev/null 2>&1 && [ -f \"$PROJECT_DIR/tools/session_check.py\" ]; then python3 \"$PROJECT_DIR/tools/session_check.py\" --hook; elif [ -f \"$PROJECT_DIR/bootstrap.md\" ]; then echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"[未初始化] 检测到 bootstrap.md（python3 不可用）。请主动提示：请先读取 bootstrap.md 引导用户完成初始化 → 仅回复 A 或 B。完成初始化前请勿执行任何 P-E-R 操作。\"}}'; else echo '{}'; fi",
+            "timeout": 10,
+            "statusMessage": "运行协议会话自检 (tools/session_check.py)..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+# H0 pilot harness.
+# The LLM client (src/llm_client.py, src/providers.py) is STDLIB-ONLY — env_check
+# runs with no installs. The deps below are for the full pilot (attacker, oracles, analysis).
+
+numpy>=1.26          # bootstrap CI / metrics
+
+# --- Domain adapters (install on the server when we build those stages) ---
+# Domain (1) agentic injection:
+#   agentdojo                 # pip install agentdojo  (ETH SpyLab)
+#   InjecAgent                # git clone https://github.com/uiuc-kang-lab/InjecAgent (not on PyPI)
+# Domain (2) NVIDIA-style:
+#   garak                     # pip install garak       (NVIDIA LLM probes/detectors)
+
+# Optional alt client (we currently use stdlib urllib instead):
+# openai>=1.0
