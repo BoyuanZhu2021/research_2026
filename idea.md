@@ -55,8 +55,10 @@
   - 可验证 oracle 的**覆盖面**：能否覆盖足够多有意义的攻击，避免只剩玩具任务。
   - **与 DialTree 的区分度**必须在 intro 讲死：攻击域不同（可验证/agentic vs 有害内容）、奖励性质不同（可组合技能级可验证 vs 末端学习分类器）、解决问题不同（OOD 组合泛化 vs 单纯多轮）。
 - 需先验证的关键假设（按先后）：
-  - **H0（地基，最先验）：在 OOD/未见目标上，多轮攻击本身就比单轮提高 ASR。** 若不成立，技能库 / 可验证奖励都无从谈起，需重定方向。
-  - H1：稀疏终局奖励是 OOD 停滞的主因（可用"密集技能奖励 vs 仅末端奖励"消融验证）。
+  - **H0（地基，最先验）✅ 已验证（DISC-2026W27-001, 2026-07-02）：在 OOD/未见目标上，多步攻击面真实存在且非平凡。** 精确表述：(a) 朴素**多轮**（attacker 重试、单步 target）增益是 target-difficulty-dependent——hard target 上强支持、easy target 天花板（EXP-2026W27-001..003）；(b) 更核心的 **multi-step**（agent 多步轨迹）是独立攻击面——per-step 单步 ASR 0.0% / 多步 31.4%，goal-depth 多目标 22.7%（4 模型全显著、泛化 held-out OOD suite 27.8%），两 oracle 一致（EXP-2026W27-004..006）。**限定**：H0 只立 precondition（多步攻击面 + 中间态可程序化验证 = 密集奖励底座），**非** thesis（学习可验证可组合技能 → OOD 泛化），后者是 H1。
+  - **H1（已结案 · UNTESTED 非 falsified · DISC-2026W27-002, 2026-07-08，归档 [Discussion/Archive/DISC-2026W27-002-h1-dense-vs-sparse-untested.md](Discussion/Archive/DISC-2026W27-002-h1-dense-vs-sparse-untested.md)）**：稀疏终局奖励是否 OOD 停滞主因（"密集技能奖励 vs 仅末端奖励"消融）。**结论**：(1) GRPO 有效——两 regime ASR 显著提升（EXP-2026W28-001）；(2) 但 dense ≈ sparse（Phase A/B），经对抗核验**并非 H1 被驳斥而是未测**——AgentDojo 注入域 **atomic-by-construction**（Φ 恒 0/1，dense 机制未触发）+ 欠功效。(3) **条件化**：可验证分解助 OOD **当且仅当** target 行为在奖励时暴露子状态；该域不满足。(4) 门控式目标已 CPU 验证可产生 0<Φ<1（`code/scripts/h1_gated_goals.py`），真正测 H1 需在门控域重跑补功效（另开议题）。
+  - H2：技能可组合 → 对未见目标的成功率随技能数上升（compositional 泛化曲线）。
+  - H3：程序化 oracle 奖励比学习型 judge 更抗 reward-hacking 且更稳。
   - H2：技能可组合 → 对未见目标的成功率随技能数上升（compositional 泛化曲线）。
   - H3：程序化 oracle 奖励比学习型 judge 更抗 reward-hacking 且更稳。
 
@@ -86,7 +88,9 @@
 ## 5. TODO & 下一步
 
 - 接下来的小步骤（按优先级：先验地基前提，再搭机制）：
-  1. **【最优先 · 验证地基 / H0】在 OOD（未见目标）上，多轮攻击是否比单轮提高 ASR？** 用最小代价验：沿用 NVIDIA 单轮设置作对照，**先不引入技能库 / 可验证奖励**（甚至可先用 prompting + 少量 rollout 的朴素多轮），只回答"多轮本身在 OOD 上有没有增益"。有增益 → 前提成立，继续；无增益 → idea 前提不立，重定方向。
+  1. ~~**【H0 · 地基】**~~ ✅ 完成（DISC-2026W27-001）：多步是真实独立攻击面。见 §3.4 / EXP-2026W27-001..006。
+  1b. ~~**【H1 · dense vs sparse】**~~ ✅ **已结案（DISC-2026W27-002, 2026-07-08）**：GRPO 有效，但 dense≈sparse 且经核验为 **UNTESTED 非 falsified**（域 atomic-by-construction，dense 机制未触发）。见 §3.4 / EXP-2026W28-001..002。
+  1c. **【当前焦点 · 真正测 H1】门控式目标重设计**：造子步骤**因果依赖**、有**可观测部分进度**（0<Φ<1）的攻击目标（`gated_exfil` PoC 已 CPU 验证结构可行），按逐步快照评分 Φ；**先卡关**（未训 victim 上量 0<Φ<1 比例，无 GPU），非平凡再开 GPU 重训 dense vs sparse 并**补功效**（≥3 seeds / 更大 n）。另开新议题跟踪。
   2. 选定 1–2 个**可验证攻击域**作主战场（建议 agentic 注入：AgentDojo / InjecAgent 现成环境 + 程序化 oracle），盘清可用的子技能与其完成条件。
   3. 设计**目标→可验证子技能序列**的自动分解方案（把 NVIDIA "生成终局 rubric" 改造为 "生成可验证子目标链"），先小规模验证可生成性，再跑"仅末端 vs 技能级密集奖励"消融骨架（验证 H1–H2）。
 - 需要先回答的问题：

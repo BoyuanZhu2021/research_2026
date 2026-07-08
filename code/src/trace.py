@@ -19,7 +19,10 @@ import threading
 import time
 from pathlib import Path
 
-from . import llm_client
+try:
+    from . import llm_client
+except ImportError:  # imported as a top-level module (src on sys.path)
+    import llm_client
 
 
 def _now_iso() -> str:

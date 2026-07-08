@@ -17,7 +17,10 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-from .providers import resolve_provider
+try:
+    from .providers import resolve_provider
+except ImportError:  # imported as a top-level module (src on sys.path)
+    from providers import resolve_provider
 
 RETRYABLE = {408, 409, 429, 500, 502, 503, 504}
 
