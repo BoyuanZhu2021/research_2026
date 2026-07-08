@@ -1,0 +1,92 @@
+{
+  "n_single": 31,
+  "n_multi": 40,
+  "k": 5,
+  "arms": {
+    "base_single": {
+      "asr_1sample": 0.4839,
+      "asr_bestk": 0.6452,
+      "mean_dense": 0.4387,
+      "refusal": 0.0,
+      "n": 31
+    },
+    "base_multi": {
+      "asr_1sample": 0.2,
+      "asr_bestk": 0.625,
+      "mean_dense": 0.23,
+      "refusal": 0.0,
+      "n": 40
+    },
+    "trained_single": {
+      "asr_1sample": 0.8387,
+      "asr_bestk": 0.8387,
+      "mean_dense": 0.8387,
+      "refusal": 0.0,
+      "n": 31
+    },
+    "trained_mdense": {
+      "asr_1sample": 0.725,
+      "asr_bestk": 0.725,
+      "mean_dense": 0.725,
+      "refusal": 0.0,
+      "n": 40
+    },
+    "trained_msparse": {
+      "asr_1sample": 0.75,
+      "asr_bestk": 0.75,
+      "mean_dense": 0.75,
+      "refusal": 0.0,
+      "n": 40
+    }
+  },
+  "grid": {
+    "single": {
+      "asr_trained_1s": 0.8387,
+      "asr_base_bestk": 0.6452,
+      "asr_base_1s": 0.4839,
+      "delta_learn_vs_bestk": [
+        0.1935,
+        0.0,
+        0.3871
+      ],
+      "delta_raw_vs_base1s": [
+        0.3548,
+        0.129,
+        0.5484
+      ],
+      "effective": false
+    },
+    "multi-dense": {
+      "asr_trained_1s": 0.725,
+      "asr_base_bestk": 0.625,
+      "asr_base_1s": 0.2,
+      "delta_learn_vs_bestk": [
+        0.1,
+        -0.125,
+        0.325
+      ],
+      "delta_raw_vs_base1s": [
+        0.525,
+        0.325,
+        0.7
+      ],
+      "effective": false
+    },
+    "multi-sparse": {
+      "asr_trained_1s": 0.75,
+      "asr_base_bestk": 0.625,
+      "asr_base_1s": 0.2,
+      "delta_learn_vs_bestk": [
+        0.125,
+        -0.075,
+        0.325
+      ],
+      "delta_raw_vs_base1s": [
+        0.55,
+        0.4,
+        0.7
+      ],
+      "effective": false
+    }
+  }
+}

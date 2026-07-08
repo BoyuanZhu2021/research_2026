@@ -1,0 +1,37 @@
+{
+  "n": 40,
+  "min_depth": 4,
+  "base": {
+    "asr_1s": 0.225,
+    "asr_bestk": 0.65,
+    "mean_phi": 0.28
+  },
+  "dense": {
+    "asr": 0.775,
+    "mean_phi": 0.775
+  },
+  "sparse": {
+    "asr": 0.8,
+    "mean_phi": 0.8
+  },
+  "dense_minus_sparse_ASR": [
+    -0.025,
+    -0.2,
+    0.175
+  ],
+  "dense_minus_sparse_PHI": [
+    -0.025,
+    -0.2,
+    0.175
+  ],
+  "dense_minus_base_bestk": [
+    0.125,
+    -0.075,
+    0.325
+  ],
+  "sparse_minus_base_bestk": [
+    0.15,
+    0.0,
+    0.325
+  ]
+}

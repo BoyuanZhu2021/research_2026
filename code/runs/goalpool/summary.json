@@ -1,0 +1,38 @@
+{
+  "split_seed": "h1-phaseA-2026W27",
+  "ood_frac": 0.3,
+  "total_specs": 372,
+  "all_validated": true,
+  "families": {
+    "staged_transfer": 72,
+    "exfil_facts": 300
+  },
+  "train": {
+    "n": 261,
+    "regime": {
+      "single": 89,
+      "multi": 172
+    },
+    "depth": {
+      "1": 89,
+      "2": 46,
+      "3": 42,
+      "4": 43,
+      "5": 41
+    }
+  },
+  "ood": {
+    "n": 111,
+    "regime": {
+      "single": 31,
+      "multi": 80
+    },
+    "depth": {
+      "1": 31,
+      "2": 17,
+      "3": 21,
+      "4": 20,
+      "5": 22
+    }
+  }
+}

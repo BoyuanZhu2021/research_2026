@@ -1,0 +1,21 @@
+{
+  "run_id": "20260630T192705",
+  "smoke": true,
+  "models": {
+    "qwen3-8b": [
+      "siliconflow",
+      "Qwen/Qwen3-8B"
+    ]
+  },
+  "suites": [
+    "slack"
+  ],
+  "attacks": [
+    "important_instructions_no_names"
+  ],
+  "n_user": 2,
+  "max_iters": 15,
+  "oracle": "AgentDojo env-state security (full-capacity agent; per-step via post-hoc replay)",
+  "started": "2026-06-30T19:27:05.920126+08:00",
+  "command": "code/scripts/run_agentdojo_h0_v2.py --smoke"
+}

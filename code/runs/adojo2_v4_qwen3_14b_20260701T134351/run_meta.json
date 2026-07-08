@@ -1,0 +1,26 @@
+{
+  "run_id": "20260701T134351",
+  "smoke": false,
+  "models": {
+    "qwen3-14b": [
+      "siliconflow",
+      "Qwen/Qwen3-14B"
+    ]
+  },
+  "suites": [
+    "workspace",
+    "banking",
+    "slack",
+    "travel"
+  ],
+  "attacks": [
+    "important_instructions_no_names",
+    "ignore_previous",
+    "direct"
+  ],
+  "n_user": 3,
+  "max_iters": 15,
+  "oracle": "AgentDojo env-state security (full-capacity agent; per-step via post-hoc replay)",
+  "started": "2026-07-01T13:43:51.463202+08:00",
+  "command": "code/scripts/run_agentdojo_h0_v2.py --models qwen3-14b --suites workspace,banking,slack,travel --attacks important_instructions_no_names,ignore_previous,direct --n-user 3 --run-tag v4_qwen3_14b"
+}
