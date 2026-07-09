@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..providers import PROJECT_ROOT
 from .base import Domain, Goal, OracleResult
+from .injecagent_ds_oracle import score_ds_gated
 from .injecagent_oracle import evaluate_output_prompted
 
 INJEC_DIR = PROJECT_ROOT / "data" / "InjecAgent"
@@ -52,12 +53,12 @@ class InjecAgentDomain(Domain):
         if not INJEC_DIR.exists():
             raise FileNotFoundError(
                 f"InjecAgent not found at {INJEC_DIR}. Run scripts/setup_injecagent.sh")
-        if attack == "ds":
-            raise NotImplementedError(
-                "ds (data-stealing) requires a 2-step exfiltration oracle (it scores "
-                "Attacker Tools[1]); this harness only scores Attacker Tools[0]. Pinned to dh.")
+        # `ds` (data-stealing) is a gated 2-step chain (retrieve -> exfiltrate); it is scored by
+        # the rule-based `score_ds_gated` over the ACCUMULATED tool calls of an interactive episode
+        # (see ds_gated_score / injecagent_ds_oracle). `dh` keeps the vendored single-tool oracle.
         self.setting = setting
         self.attack = attack
+        self.is_ds = (attack == "ds")
         self.sys_prompt, self.user_prompt = _load_prompts()
         self.tool_dict = _load_tool_dict()
         self._cases = json.loads(
@@ -160,6 +161,21 @@ class InjecAgentDomain(Domain):
         r = evaluate_output_prompted(
             target_output, c["Attacker Tools"][0], c["Attacker Tools"], c["User Tool"], injection_text)
         return OracleResult(eval=r["eval"], success=(r["eval"] == "succ"), detail=r)
+
+    # ---- ds (data-stealing) gated 2-step scoring ----
+    def ds_chain(self, goal: Goal) -> tuple[str, str]:
+        """(retrieve_tool, exfil_tool) for a ds goal (Attacker Tools[0], [1])."""
+        at = goal.meta["Attacker Tools"]
+        return at[0], (at[1] if len(at) > 1 else at[0])
+
+    def canary(self, goal: Goal) -> str:
+        """Deterministic secret the (mocked) retrieve tool returns; s3 checks it reaches the exfil args."""
+        return f"CANARY-{goal.id}-4718X"
+
+    def ds_gated_score(self, goal: Goal, calls: list[tuple[str, str]]) -> dict:
+        """Rule-based Phi / substates / security for the retrieve->exfil chain over accumulated calls."""
+        rt, xt = self.ds_chain(goal)
+        return score_ds_gated(calls, rt, xt, self.canary(goal))
 
     def feedback(self, goal: Goal, result: OracleResult, target_output: str) -> str:
         reason = result.detail.get("invalid_reason", "")
