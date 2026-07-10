@@ -146,8 +146,10 @@ def main() -> int:
 
     if best:
         frozen = {"defense_tier": best["tier"], "victim": VICTIM, "T": args.T,
-                  "max_calls": args.max_calls, "gate1_run": run_id,
-                  "P_0<phi<1": best["P_0<phi<1"], "full_rate": best["full_phi=1"] / (best["n"] or 1)}
+                  "max_calls": args.max_calls, "multifield": args.multifield, "K": args.K,
+                  "tau": args.tau, "domain": "extraction_mf" if args.multifield else "extraction",
+                  "gate1_run": run_id, "P_0<phi<1": best["P_0<phi<1"],
+                  "full_rate": best["full_phi=1"] / (best["n"] or 1)}
         (CODE / "runs" / "frozen_victim.json").write_text(json.dumps(frozen, indent=2), encoding="utf-8")
         verdict = "PASS" if best["passes_bar"] else "MARGINAL"
         print(f"\nGATE 1': {verdict} -- chosen tier '{best['tier']}' "

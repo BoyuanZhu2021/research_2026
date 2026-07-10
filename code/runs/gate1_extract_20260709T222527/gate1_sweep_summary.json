@@ -1,0 +1,25 @@
+{
+  "tiers": [
+    {
+      "tier": "light",
+      "n": 6,
+      "P_0<phi<1": 0.333,
+      "partial": 2,
+      "full_phi=1": 0,
+      "zero_phi=0": 4,
+      "success": 0,
+      "mean_max_phi": 0.167,
+      "max_phi_hist": {
+        "0.0": 4,
+        "0.5": 2
+      },
+      "first_success_turn_hist": {},
+      "n_refused_total": 2,
+      "winnable": false,
+      "passes_bar": false
+    }
+  ],
+  "partial_bar": 0.2,
+  "chosen_tier": null,
+  "passes": false
+}

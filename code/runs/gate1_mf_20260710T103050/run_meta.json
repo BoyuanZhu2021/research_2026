@@ -1,0 +1,31 @@
+{
+  "run_id": "20260710T103050",
+  "n": 40,
+  "T": 5,
+  "max_calls": 3,
+  "tiers": [
+    "none",
+    "light",
+    "moderate"
+  ],
+  "multifield": true,
+  "K": 5,
+  "tau": 1.0,
+  "attacker": {
+    "provider": "siliconflow",
+    "model": "Qwen/Qwen3-8B",
+    "max_tokens": 1024,
+    "temperature": 0.8,
+    "enable_thinking": false
+  },
+  "victim": {
+    "provider": "siliconflow",
+    "model": "Qwen/Qwen3.6-27B",
+    "max_tokens": 512,
+    "temperature": 0.7,
+    "enable_thinking": false
+  },
+  "partial_bar": 0.2,
+  "command": "code/scripts/h1_defense_sweep.py --multifield --K 5 --tau 1.0 --n 40 --workers 6 --tiers none,light,moderate",
+  "started": "2026-07-10T10:30:50.622629+08:00"
+}

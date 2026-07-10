@@ -1,0 +1,58 @@
+{
+  "tiers": [
+    {
+      "tier": "light",
+      "n": 40,
+      "P_0<phi<1": 0.5,
+      "partial": 20,
+      "full_phi=1": 11,
+      "zero_phi=0": 9,
+      "success": 11,
+      "mean_max_phi": 0.555,
+      "max_phi_hist": {
+        "0.0": 9,
+        "0.2": 1,
+        "0.4": 8,
+        "0.6": 5,
+        "0.8": 6,
+        "1.0": 11
+      },
+      "first_success_turn_hist": {
+        "3": 3,
+        "4": 3,
+        "5": 5
+      },
+      "n_refused_total": 3,
+      "winnable": true,
+      "passes_bar": true
+    },
+    {
+      "tier": "moderate",
+      "n": 40,
+      "P_0<phi<1": 0.475,
+      "partial": 19,
+      "full_phi=1": 3,
+      "zero_phi=0": 18,
+      "success": 3,
+      "mean_max_phi": 0.335,
+      "max_phi_hist": {
+        "0.0": 18,
+        "0.2": 1,
+        "0.4": 8,
+        "0.6": 5,
+        "0.8": 5,
+        "1.0": 3
+      },
+      "first_success_turn_hist": {
+        "3": 1,
+        "5": 2
+      },
+      "n_refused_total": 8,
+      "winnable": true,
+      "passes_bar": true
+    }
+  ],
+  "partial_bar": 0.2,
+  "chosen_tier": "light",
+  "passes": true
+}

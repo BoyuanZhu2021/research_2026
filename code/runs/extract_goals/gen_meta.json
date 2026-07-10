@@ -1,0 +1,11 @@
+{
+  "K": 5,
+  "tau": 1.0,
+  "defense": "light",
+  "n_train": 48,
+  "n_ood": 60,
+  "victim": {
+    "provider": "siliconflow",
+    "model": "Qwen/Qwen3.6-27B"
+  }
+}
