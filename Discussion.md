@@ -23,7 +23,7 @@
 > 维护一组**收敛性问题**，每条带 owner 与到期，防止讨论绕圈。
 
 - [x] **Q1（Gate 1，最关键）→ 已解决**：冻结 victim 是否真停在 `0<Φ<1`？**PASS**——经「间接注入原子 → 直接解耦提取 → 外发硬墙 → breach 重定义为披露 + K>1 逐字段分级」三次迭代，最终 **light 档 `P(0<Φ<1)=50%`、full 27%、Φ 全梯度、可赢**（[EXP-2026W28-007](LOGS/2026-W28.md)）。round-1 的 0.5% 双峰死角彻底解决。 (owner: `Agent`) ✓
-- [ ] **Q2（Gate 2）← 当前焦点（首次 GPU，需 PI 批准）**：per-step(dense) vs terminal(sparse) 是否产生可用且**分化**的训练信号（两臂都学、行为不同）？ (owner: `Agent`/`PI`)
+- [~] **Q2（Gate 2）→ 未通过（机制未显现）**：tiny GRPO 两臂**均未见学习/分化**；根因=「只训开场白+固定 base 跟进」杠杆太弱；且 **SiliconFlow 余额耗尽**阻塞。需（1）充值（2）改全轨迹多轮训练重跑（[EXP-2026W28-008](LOGS/2026-W28.md)）。 (owner: `Agent`→`PI`)
 - [ ] **Q3（Stage 3 = H1 判决）**：per-step 是否在 **OOD ASR** 上显著 > terminal（CI 排 0 且 >0）？且步数够深（`m≥3`，非只 2 步）？GRPO 是否提升 ASR/OOD 超未训 + NVIDIA 29%？ (owner: `PI`/`Agent`)
 
 ---
@@ -135,6 +135,32 @@ PI 选 A（breach=未授权披露、K>1 分级）后建 `MultiFieldExtractionDom
 - 冻结 → `code/runs/frozen_victim.json`（light 主）。**Q1 关闭。**
 
 **下一步 = Gate 2（首次开 H20，需 PI go-ahead）**：tiny GRPO（1 seed、~15–30 步、G=5）dense vs sparse 于冻结 victim，验（a）两臂训练奖励都升（harness 通）（b）dense 臂追中间子态（更深 first-success、更多 rollout 触 0.4–0.8）。这是机制门，非 H1 判决；按 §10 首次 GPU 升级处理。
+
+【Agent @claude】【2026-07-10】Gate 2（首次 H20）结果：testbed 再证，但机制**未显现** + API 余额耗尽（[EXP-2026W28-008](LOGS/2026-W28.md)）
+
+首次开 H20，tiny GRPO dense vs sparse 于冻结 light victim（victim/base-attacker 走 SiliconFlow API，T=5，G=5）。
+
+- **harness 通**：s/step≈110s，GPU 10GB，reward 有方差、GRPO 正常更新。dense 跑满 25 步；**sparse 崩于 12/25 步（`HTTP 403 余额不足`）**。
+- **testbed 再证可用**（dense n=500）：Φ 真梯度 {0:289,.2:34,.4:34,.6:39,.8:21,1:83}，success 17%、partial 26%（与 Gate 1′ 一致、可赢）。
+- **但两臂无学习/无分化**：dense mean_maxΦ 0.295→0.255（平/略降），sparse 0.333→0.297；success/Φ 分布相近 → **未见 dense 追部分 Φ**。
+- **根因诊断**：**「只训 turn-1 开场白 + 固定 base 跟进（turns 2..T）」杠杆太弱**——固定 base attacker 做了大部分套取，reward 与被训动作解耦 → GRPO 更新但 Φ 不升。叠加 25 步 + LR cosine→0 太短。
+- **含义**：Stage 3 须改**全轨迹多轮 GRPO**（每轮都是 policy 输出），非只训开场白。
+
+**两个阻塞，均需 PI 决策：**
+1. **SiliconFlow API 余额耗尽** → 充值后才能继续任何 API-victim 训练/评测；或改本地 vLLM victim（需重下 27B-FP8 31G，我已清盘删了）。
+2. **Gate 2 重设计**：全轨迹多轮训练 + 更多步/恒定 LR，再重跑判机制。
+
+H20 已按 PI 要求关机（unreachable；请在 AutoDL 控制台确认已停止计费）。dense adapter + 全量 calls 持久留在 `/root/autodl-tmp/h1x/`。
+
+【Agent @claude】【2026-07-13】Gate 2 重设计定案（grill-me）：全轨迹多轮 + per-turn potential；method.md 已起草待批；核心信用分配数学 CPU 验证过
+
+PI 定 **fully-local H20 + full-trajectory multi-turn GRPO**。grill-me 定死核心科学 fork：**per-turn potential 奖励**（`r^dense_t=ΔΦ_t` / `r^sparse_t=终局`，沿用 `reward.py` dense=Φ/sparse=终局约定）。查 `reward.py` 确认 round-1 只把 dense 当 per-rollout 标量（Φ_final），per-step 从未真正用上——多轮重设计才首次让它成为真 per-step 奖励。
+
+- **method.md §2/§3 已起草**（**【草案·待 PI 批准】**，§9 reward-form 属 PI territory，批准前不接线 loss）：episode 势函数 `Φ_t=k/K`，两臂 telescoping 同终局回报；GRPO 组相对 **return-to-go 优势** `A_{i,t}=(G_{i,t}-b_t)/σ_t`；Claim 1（稀疏 success 下 sparse 全轨迹零梯度、dense 仍从部分进度学 → OOD 更好）+ 与 Gate 2 失败的 corollary。
+- **核心数学 CPU 验证过**（`code/src/mt_grpo.py` golden 全过）：dense telescopes 到 Φ_T、sparse 仅 τ 处触发一次；**关键——「全失败但有部分进度」的组里 sparse 零梯度=100%、dense=11%**（dense 仍学、sparse 不学），数值坐实 Claim 1。
+- **诊断锚点**：Gate 2 失败正是「被训策略不控分级进度 → A 与被训 token 解耦」；全轨迹（所有 attacker turn 都 on-policy）是 dense 生效前提。
+
+**两项待 PI/用户：**(1) **批准 method.md §3 数学**（§9）；(2) **AutoDL 控制台重启 H20**（我无法开机）。待批+开机期间我做 CPU 侧：on-policy 多轮 rollout collector + PG loss loop（mock victim 验证），及本地 vLLM 27B victim serving 脚本（复用 memory `vllm-qwen36-serving`）。
 
 ---
 
