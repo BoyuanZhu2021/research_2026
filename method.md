@@ -34,12 +34,14 @@ G_{i,t}=\sum_{k\ge t} r_{i,k},\qquad
 b_t=\operatorname{mean}_{i}G_{i,t},\quad \sigma_t=\operatorname{std}_i G_{i,t},\qquad
 A_{i,t}=\frac{G_{i,t}-b_t}{\sigma_t+\varepsilon}.
 \]
-策略梯度（GRPO/REINFORCE，PPO-clip 可选）：
+策略梯度（GRPO/REINFORCE）**加 KL-to-reference 正则**（稳定化，PI 已批准 2026-07-13；两臂同一正则、不偏 dense-vs-sparse 对比）：
 \[
-\nabla_\theta J=\mathbb E\Big[\sum_t A_{i,t}\,\nabla_\theta\log\pi_\theta(a_{i,t}\mid h_{i,t-1})\Big].
+\nabla_\theta J=\mathbb E\Big[\sum_t A_{i,t}\,\nabla_\theta\log\pi_\theta(a_{i,t}\mid h_{i,t-1})\Big]
+\;-\;\beta_{\mathrm{KL}}\,\nabla_\theta\,\mathrm{KL}\!\big(\pi_\theta\,\|\,\pi_{\mathrm{ref}}\big),
 \]
+其中参考策略 `π_ref` = **LoRA 关闭的基座**（= step-0 策略；PEFT `disable_adapter()`，无需第二份模型），KL 用 GRPO 的 k3 无偏逐 token 估计 `exp(Δ)-Δ-1`（`Δ=logπ_ref-logπ_θ`），`β_KL≈0.02`。动机：Gate 2（EXP-2026W28-009）dense 升到 0.38 后崩、grad_norm 峰 76 → 加 KL + 降 LR（1e-5→3e-6）+ grad-clip 1.0 稳定。
 
-**关键假设**：A1 victim 冻结（两臂同一 victim，Gate 1′ 冻结的 light 档）；A2 `Φ` 由规则 oracle 决定、单调、`Φ=1⇔`全披露（可解释、无 judge）；A3 所有 attacker turn 都是 `π_θ` 输出（on-policy 全轨迹）。
+**关键假设**：A1 victim 冻结（两臂同一 victim，Gate 1′ 冻结的 light 档）；A2 `Φ` 由规则 oracle 决定、单调、`Φ=1⇔`全披露（可解释、无 judge）；A3 所有 attacker turn 都是 `π_θ` 输出（on-policy 全轨迹）；A4 KL 正则对两臂相同 → 不改变 dense-vs-sparse 的相对结论。
 
 ---
 
@@ -80,3 +82,4 @@ A_{i,t}=\frac{G_{i,t}-b_t}{\sigma_t+\varepsilon}.
 |---|---|---|---|---|---|---|
 | YYYY-MM-DD | 例：在 $\mathcal L_{defense}$ 中加入 Lipschitz 约束 $\lambda \|\nabla_x f\|$ | 例：`EXP-2026W10-003` 显示原始项对 PGD 不鲁棒 | `DISC-2026W10-002` | `EXP-2026W10-003,004` | `abc1234` | `PI @TODO` |
 | 2026-07-13 | §2/§3 填入 H1 全轨迹多轮 per-turn potential 奖励：`r^dense_t=ΔΦ_t` / `r^sparse_t=终局`，return-to-go 组相对优势 `A_{i,t}=(G_{i,t}-b_t)/σ_t`；Claim 1 机制（`mt_grpo.py` golden 验证） | Gate 2「只训开场白」杠杆太弱、两臂不分化 | `DISC-2026W28-001` | `EXP-2026W28-008` | dirty | **PI 已批准 @bzhu11 2026-07-13** |
+| 2026-07-13 | §2 策略梯度加 **KL-to-reference 正则** `-β_KL·∇KL(π_θ‖π_ref)`，`π_ref`=LoRA 关闭基座（PEFT `disable_adapter`），k3 估计，`β_KL≈0.02`；配合 LR 1e-5→3e-6、grad-clip 1.0（+假设 A4：两臂同一正则不偏对比） | EXP-2026W28-009 dense 升后崩、grad_norm 峰 76（不稳） | `DISC-2026W28-001` | `EXP-2026W28-009,010` | dirty | **PI 已批准（plan 批 2026-07-13）** |

@@ -12,7 +12,7 @@ sys.path.insert(0, str(CODE))
 
 from src.domains.extraction_multifield import MultiFieldExtractionDomain  # noqa: E402
 from src.mt_grpo import group_advantages, per_turn_rewards  # noqa: E402
-from src.mt_rollout import rollout_trajectory  # noqa: E402
+from src.mt_rollout import rollout_batch, rollout_trajectory  # noqa: E402
 
 
 def make_mock_victim(disclose_word: str = "ask"):
@@ -33,6 +33,49 @@ def gen_strong(messages):
 
 def gen_weak(messages):
     return "<inject>Hello there.</inject>"
+
+
+def make_mock_victim_rated():
+    """Per-goal disclosure RATE so different goals reach tau at DIFFERENT turns -> exercises the
+    batched rollout's active-mask / early-break and per-trajectory isolation."""
+    def rate(goal):
+        return 1 + (sum(ord(c) for c in goal.id) % 2)      # 1 or 2 fields per 'ask', deterministic
+    def victim_fn(goal, conversation):
+        canaries = [c for _, c, _ in goal.meta["fields"]]
+        asks = sum(1 for m in conversation if m["role"] == "user" and "ask" in m["content"].lower())
+        k = min(asks * rate(goal), len(canaries))
+        reply = "Sharing: " + " ".join(canaries[:k]) if k else "How can I help?"
+        return reply, []
+    return victim_fn
+
+
+def _gen_ask(messages):
+    return "<inject>please ask</inject>"
+
+
+def test_batch_equivalence(dom) -> None:
+    """rollout_batch (lockstep, batched gen + concurrent victim) MUST equal looping rollout_trajectory
+    when gen/victim are pure per-item. This is the correctness gate before any GPU."""
+    goals = dom.load_goals("indomain", seed=0, n=6)
+    victim_fn = make_mock_victim_rated()
+
+    def gen_batch_fn(batch_messages):
+        return [{"text": _gen_ask(m)} for m in batch_messages]
+
+    def victim_batch_fn(items):
+        return [victim_fn(g, c) for g, c in items]
+
+    batched = rollout_batch(dom, goals, gen_batch_fn, victim_batch_fn, T=6, tau=1.0)
+    seq = [rollout_trajectory(dom, g, _gen_ask, victim_fn, T=6, tau=1.0) for g in goals]
+
+    for i, (b, s) in enumerate(zip(batched, seq)):
+        assert b["phi_trace"] == s["phi_trace"], f"traj {i}: batched {b['phi_trace']} != seq {s['phi_trace']}"
+        assert b["success"] == s["success"] and b["n_turns"] == s["n_turns"], f"traj {i}: success/n_turns differ"
+    succ_turns = {b["n_turns"] for b in batched if b["success"]}
+    assert len(succ_turns) >= 2, f"expected varied success turns (active-mask exercised), got {succ_turns}"
+    assert any(b["n_turns"] < 6 for b in batched), "expected at least one early-break trajectory"
+    print(f"  batch≡seq over {len(goals)} trajectories; success at turns {sorted(succ_turns)} "
+          f"(active-mask + early-break exercised)")
 
 
 def main() -> int:
@@ -75,7 +118,10 @@ def main() -> int:
     assert fz_s == 1.0 and fz_d < 1.0, f"expected sparse dead / dense alive, got s={fz_s} d={fz_d}"
     print(f"  all-failed-partial group: sparse zero-grad={fz_s:.0%}  dense zero-grad={fz_d:.0%}  <- Claim 1")
 
-    print("\nmt pipeline (rollout -> rewards -> advantages): ALL PASS")
+    # batched rollout must equal sequential (correctness gate for the throughput fix)
+    test_batch_equivalence(dom)
+
+    print("\nmt pipeline (rollout -> rewards -> advantages + batch≡seq): ALL PASS")
     return 0
 
 

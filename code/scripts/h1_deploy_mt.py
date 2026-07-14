@@ -30,7 +30,8 @@ def main():
     for p in sorted((CODE / "src").rglob("*.py")):
         rel = p.relative_to(CODE.parent).as_posix()
         plan.append((p, rel)); rem_dirs.add(str(Path(rel).parent).replace("\\", "/"))
-    plan.append((CODE / "scripts" / "h1_mt_grpo_train.py", "code/scripts/h1_mt_grpo_train.py"))
+    for s in ("h1_mt_grpo_train.py", "h1_mt_ood_eval.py"):
+        plan.append((CODE / "scripts" / s, f"code/scripts/{s}"))
     rem_dirs.add("code/scripts")
     for loc, rel in DATA_FILES.items():
         plan.append((loc, rel)); rem_dirs.add(str(Path(rel).parent).replace("\\", "/"))

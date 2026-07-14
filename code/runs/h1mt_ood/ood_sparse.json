@@ -1,0 +1,16 @@
+{
+  "tag": "sparse",
+  "adapter": "runs/mt-sparse-s0/adapter",
+  "n": 48,
+  "OOD_ASR": 0.1458,
+  "mean_max_phi": 0.4458,
+  "hist": {
+    "0.0": 14,
+    "0.2": 5,
+    "0.4": 7,
+    "0.6": 7,
+    "0.8": 8,
+    "1.0": 7
+  },
+  "elapsed_min": 27.6
+}

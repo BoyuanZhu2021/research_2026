@@ -1,0 +1,16 @@
+{
+  "tag": "dense",
+  "adapter": "runs/mt-dense-s0/adapter",
+  "n": 48,
+  "OOD_ASR": 0.1875,
+  "mean_max_phi": 0.4333,
+  "hist": {
+    "0.0": 15,
+    "0.2": 6,
+    "0.4": 6,
+    "0.6": 7,
+    "0.8": 5,
+    "1.0": 9
+  },
+  "elapsed_min": 27.4
+}

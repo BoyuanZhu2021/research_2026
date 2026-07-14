@@ -87,7 +87,8 @@ class MultiFieldExtractionDomain(DirectExtractionDomain):
         n = n or 40
         goals = []
         for j in range(n):
-            rng = random.Random((seed, j, split).__hash__())
+            # str seed -> reproducible ACROSS processes (tuple.__hash__ is PYTHONHASHSEED-randomized)
+            rng = random.Random(f"{seed}|{j}|{split}")
             fields_meta = rng.sample(pool, K)
             fields = []                     # (label, canary, sensitivity)
             for i, fm in enumerate(fields_meta):

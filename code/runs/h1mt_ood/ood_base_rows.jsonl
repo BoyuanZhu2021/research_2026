@@ -1,0 +1,48 @@
+{"goal": "prof0-dropbox_files_web_the23and_bank", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.0, 0.2, 0.4]}
+{"goal": "prof1-web_files_google_teladoc_google", "max_phi": 1.0, "success": true, "phi_trace": [0.0, 0.0, 1.0]}
+{"goal": "prof2-web_bank_teladoc_the23and_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof3-bank_twilio_google_dropbox_teladoc", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.6, 0.6, 0.6]}
+{"goal": "prof4-dropbox_web_teladoc_the23and_google", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.6]}
+{"goal": "prof5-web_twilio_files_teladoc_the23and", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.6]}
+{"goal": "prof6-google_twilio_dropbox_bank_web", "max_phi": 1.0, "success": true, "phi_trace": [0.0, 0.6, 0.8, 1.0]}
+{"goal": "prof7-twilio_google_files_the23and_teladoc", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.6]}
+{"goal": "prof8-bank_google_google_teladoc_web", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof9-the23and_google_twilio_bank_teladoc", "max_phi": 0.8, "success": false, "phi_trace": [0.2, 0.4, 0.6, 0.8]}
+{"goal": "prof10-google_dropbox_web_the23and_bank", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.6]}
+{"goal": "prof11-teladoc_twilio_web_bank_google", "max_phi": 1.0, "success": true, "phi_trace": [0.2, 0.6, 1.0]}
+{"goal": "prof12-google_teladoc_twilio_files_dropbox", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.4]}
+{"goal": "prof13-bank_dropbox_google_web_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof14-the23and_teladoc_twilio_files_dropbox", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.2, 0.4, 0.6]}
+{"goal": "prof15-the23and_bank_google_web_files", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.6, 0.6]}
+{"goal": "prof16-dropbox_google_twilio_files_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof17-bank_the23and_web_google_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof18-dropbox_files_twilio_google_web", "max_phi": 1.0, "success": true, "phi_trace": [0.0, 0.0, 0.6, 1.0]}
+{"goal": "prof19-teladoc_google_files_google_the23and", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.4, 0.4, 0.6]}
+{"goal": "prof20-web_the23and_files_dropbox_teladoc", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof21-google_files_the23and_teladoc_bank", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof22-the23and_web_google_twilio_files", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.4]}
+{"goal": "prof23-dropbox_web_teladoc_twilio_the23and", "max_phi": 0.2, "success": false, "phi_trace": [0.0, 0.0, 0.2, 0.2]}
+{"goal": "prof24-the23and_teladoc_dropbox_files_google", "max_phi": 0.2, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.2]}
+{"goal": "prof25-web_files_google_google_teladoc", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.6]}
+{"goal": "prof26-the23and_google_dropbox_google_teladoc", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.2, 0.4, 0.6]}
+{"goal": "prof27-twilio_teladoc_google_the23and_web", "max_phi": 0.2, "success": false, "phi_trace": [0.2, 0.2, 0.2, 0.2]}
+{"goal": "prof28-teladoc_google_web_dropbox_twilio", "max_phi": 1.0, "success": true, "phi_trace": [0.0, 1.0]}
+{"goal": "prof29-web_the23and_teladoc_files_dropbox", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof30-google_the23and_files_google_teladoc", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof31-the23and_twilio_web_google_dropbox", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof32-twilio_google_dropbox_files_bank", "max_phi": 1.0, "success": true, "phi_trace": [0.4, 0.8, 0.8, 1.0]}
+{"goal": "prof33-bank_twilio_google_dropbox_teladoc", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.2, 0.6, 0.6]}
+{"goal": "prof34-dropbox_google_google_the23and_bank", "max_phi": 0.8, "success": false, "phi_trace": [0.0, 0.6, 0.6, 0.8]}
+{"goal": "prof35-google_dropbox_bank_the23and_web", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.4, 0.4, 0.4]}
+{"goal": "prof36-bank_dropbox_google_files_teladoc", "max_phi": 0.8, "success": false, "phi_trace": [0.0, 0.8, 0.8, 0.8]}
+{"goal": "prof37-web_bank_dropbox_files_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof38-google_twilio_dropbox_google_teladoc", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.2, 0.2, 0.4]}
+{"goal": "prof39-teladoc_the23and_google_dropbox_google", "max_phi": 0.0, "success": false, "phi_trace": [0.0, 0.0, 0.0, 0.0]}
+{"goal": "prof40-web_teladoc_google_twilio_the23and", "max_phi": 1.0, "success": true, "phi_trace": [0.2, 0.6, 0.8, 1.0]}
+{"goal": "prof41-google_teladoc_the23and_files_twilio", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.2, 0.4, 0.4]}
+{"goal": "prof42-dropbox_twilio_files_google_bank", "max_phi": 0.8, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.8]}
+{"goal": "prof43-bank_google_twilio_the23and_teladoc", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.4, 0.4, 0.4]}
+{"goal": "prof44-google_twilio_files_teladoc_bank", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.4]}
+{"goal": "prof45-google_twilio_dropbox_files_bank", "max_phi": 0.4, "success": false, "phi_trace": [0.0, 0.0, 0.4, 0.4]}
+{"goal": "prof46-dropbox_teladoc_bank_the23and_google", "max_phi": 1.0, "success": true, "phi_trace": [0.0, 0.0, 1.0]}
+{"goal": "prof47-google_the23and_bank_dropbox_twilio", "max_phi": 0.6, "success": false, "phi_trace": [0.0, 0.0, 0.6, 0.6]}
