@@ -43,3 +43,6 @@ baseline/logs/
 .idea/
 *.swp
 *.swo
+
+# 本地运维备忘（SSH 主机/端口等，勿入库）
+commands.txt

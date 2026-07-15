@@ -1,0 +1,20 @@
+{
+  "note": "Full LoRA weights exceed GitHub 100MB limit; only configs are versioned here.",
+  "dense": {
+    "arm": "dense",
+    "seed": 0,
+    "config": "dense/adapter_config.json",
+    "weights_local": "dense/adapter_model.safetensors",
+    "weights_size_mb": 333,
+    "weights_remote": "/root/autodl-tmp/h1mt/runs/mt-dense-s0/adapter/adapter_model.safetensors",
+    "exp": "EXP-2026W29-001"
+  },
+  "sparse": {
+    "arm": "sparse",
+    "seed": 0,
+    "weights_local": "sparse/adapter_model.safetensors",
+    "weights_local_note": "truncated partial pull (~10MB); re-pull from H20 when stable",
+    "weights_remote": "/root/autodl-tmp/h1mt/runs/mt-sparse-s0/adapter/adapter_model.safetensors",
+    "exp": "EXP-2026W29-001"
+  }
+}
