@@ -66,6 +66,31 @@ def latest_past_week_log(now: tuple[int, int]) -> tuple[int, int] | None:
     return best
 
 
+def handoff_line() -> str | None:
+    """Surface HANDOFF.md's live state + next action so any agent picks up immediately."""
+    text = read(REPO / "HANDOFF.md")
+    if not text:
+        return None
+    updated = ""
+    mu = re.search(r"\*\*Last updated:\*\*\s*([0-9-]+)", text)
+    if mu:
+        updated = f"（更新 {mu.group(1)}）"
+    status = ""
+    ms = re.search(r"^##\s*Status:\s*(.+)$", text, re.MULTILINE)
+    if ms:
+        status = ms.group(1).strip()
+    action = ""
+    ma = re.search(r"^##\s*\S*\s*Immediate next action[^\n]*\n+([^\n]+)", text, re.MULTILINE)
+    if ma:
+        action = ma.group(1).strip()
+    parts = [f">> 接手点：HANDOFF.md{updated}"]
+    if status:
+        parts.append(f"状态：{status}")
+    if action:
+        parts.append(f"下一步：{action}")
+    return " — ".join(parts)
+
+
 def discussion_line() -> str:
     text = read(REPO / "Discussion.md")
     header = text.split("## Open Questions")[0]
@@ -101,10 +126,11 @@ def briefing() -> str:
         )
 
     now: tuple[int, int] = date.today().isocalendar()[:2]
-    lines = [
-        f"[会话简报] mode = {mode}（策略见 MODE.md / AGENTS.md § 3）",
-        f"- {discussion_line()}",
-    ]
+    lines = [f"[会话简报] mode = {mode}（策略见 MODE.md / AGENTS.md § 3）"]
+    ho = handoff_line()
+    if ho:
+        lines.append(f"- {ho}")
+    lines.append(f"- {discussion_line()}")
 
     week_file = LOGS_DIR / f"{week_str(now)}.md"
     if week_file.exists():
@@ -128,6 +154,10 @@ def briefing() -> str:
 
 
 def main() -> int:
+    try:  # robust on non-UTF8 consoles (e.g. Windows GBK) so the briefing never crashes
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:  # noqa: BLE001
+        pass
     text = briefing()
     if "--hook" in sys.argv[1:]:
         payload = {

@@ -15,10 +15,12 @@
 
 ## 1. 核心锚点文件
 
+- `HANDOFF.md`：**接手点（会话/换 Agent 必先读）**——当前阶段、进行中任务、下一步（含可直接跑的命令）、产物位置、阻塞项。`tools/session_check.py` 会在会话简报首行surface它。**任务或其下一步变化时（会话结束、跑完一段、阻塞/解阻塞）必须更新本文件。** 详细历史仍在 LOGS/Discussion/method；本文件只是指针。
 - `idea.md`：研究问题、动机、目标、实验大图。
 - `method.md`：方法的数学形式化（损失、假设、推论/定理、解释）+ 变更日志。
 - `Discussion.md`：**当前唯一 active 议题**（多人协作主战场，一议题一主线）。
-- `Discussion/Archive/`：已关闭议题归档（每议题一个 md）。
+- `Discussion/INDEX.md`：**议题总登记表**（active + 已归档，确保无议题遗漏）；`Discussion/Archive/`：已关闭议题归档（每议题一个 md）。开/关议题时同步更新 INDEX。
+- `docs/plans/`：已批准的计划快照（跨 Agent 持久，任何工具可读）。
 - `LOGS/`：按周记录实验结果（每周一个 `YYYY-Www.md`）。
 - `MODE.md`：当前协作模式（newbie/expert）、策略与 `last_retro`（上次周回顾的 ISO 周）。
 - `code/`：项目主代码目录。

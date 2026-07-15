@@ -202,6 +202,20 @@ PI 选「快 probe」。本地 vLLM 27B victim，n=48 留出 OOD，量 base/dens
 
 **Q2 现状**：harness 三轮迭代已成立（全轨迹、per-turn credit、本地全栈、CPU+GPU 验证），但**尚未有一次功效足够、稳定的运行来判 dense vs sparse**。**请 PI 定向下一投入**（见 EXP-010 下一步 A/B/C）。
 
+【Agent @claude】【2026-07-15】H1 检验基建建成 + dense/sparse 训练完成；判决 eval 待 GPU 恢复（[EXP-2026W29-001](LOGS/2026-W29.md)）
+
+按 PI 批准的计划修三瓶颈并跑：
+
+- **基建（CPU 全验证）**：`rollout_batch` 逐轮 lockstep 批量生成 + 并发 victim，**≡ 顺序 rollout（等价金标准过）**；KL-to-ref（PEFT `disable_adapter`，无需第二模型）；配对分析复用 `analysis.bootstrap_diff` + 新 bootstrap-p + **Holm**（合成数据验判定正确）。
+- **吞吐 5.5×**：438s/64-rollouts vs 旧 37.5s/rollout，无 OOM。
+- **稳定化生效**：KL(0.01)+LR 1e-5 → **grad_norm ~20（旧 76）、无 collapse**（先试 LR 3e-6 太保守、策略几乎不动 → 改 1e-5 重跑）。
+- **训练中已见 H1 机制**：dense ~180 examples/step（信号丰）；**sparse 信号饥饿**（full-success ~2% → terminal 奖励多为 0 → 仅 ~24 examples/step）。两臂 mean_phi 噪声大 ~0.24–0.40。
+- **训练完成**：dense + sparse adapter 落盘 H20 持久盘（完整）。
+
+**未判**：启 eval 时 **AutoDL 回收 GPU**（容器在、`nvidia-smi` No devices）。eval 需 GPU → 待恢复（用户告知几小时后回）。adapter 已安全（本地 dense 完整、sparse 待重拉）。
+
+**GPU 回来后**：重拉 sparse adapter → OOD eval（base K=4 + dense/sparse ×3 seeds, n=150）+ in-domain 学习门 → `h1_mt_powered_analyze` 判 H1（配对 dense−sparse OOD ASR + Holm）→ 关机。命令已就绪（见 EXP-2026W29-001 复现）。
+
 ---
 
 ## Resolution（关闭议题时必填）
