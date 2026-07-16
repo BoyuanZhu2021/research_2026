@@ -30,7 +30,8 @@ from src.domains.extraction_multifield import MultiFieldExtractionDomain  # noqa
 from src.mt_rollout import rollout_batch  # noqa: E402
 from h1_mt_grpo_train import make_gen_batch_fn, make_victim_batch_fn  # noqa: E402
 
-ATTACKER_MODEL = "Qwen/Qwen3-8B"
+import os  # noqa: E402
+ATTACKER_MODEL = os.environ.get("ATTACKER_MODEL", "Qwen/Qwen3.5-4B")   # tool-use reframe: lighter
 
 
 def load_policy(adapter: str):

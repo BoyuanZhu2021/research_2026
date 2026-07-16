@@ -216,6 +216,22 @@ PI 选「快 probe」。本地 vLLM 27B victim，n=48 留出 OOD，量 base/dens
 
 **GPU 回来后**：重拉 sparse adapter → OOD eval（base K=4 + dense/sparse ×3 seeds, n=150）+ in-domain 学习门 → `h1_mt_powered_analyze` 判 H1（配对 dense−sparse OOD ASR + Holm）→ 关机。命令已就绪（见 EXP-2026W29-001 复现）。
 
+【Agent @claude】【2026-07-15】PI 定向大转向：**tool-use 中心 + 更轻模型**（grill 后定案 + Stage 0 CPU 过）（[EXP-2026W29-002](LOGS/2026-W29.md)）
+
+PI 指令：加速迭代 + 让 **tool-use 成为核心**。放弃前一轮 chat-disclosure 判决（EXP-2026W29-001，GPU 被回收未判）。grill-me 定死 5 承重决策：
+
+| Fork | 决策 |
+|---|---|
+| **ASR/Φ** | = victim 被诱导执行的**目标恶意 tool-chain 比例**（因果门控：第 k 步需 k−1 先执行）；dense=逐 tool ΔΦ，sparse=整链终局。纯 ReAct 解析，无 judge。仅**目标** tool 计数。 |
+| **通道** | **间接注入**（InjecAgent）：victim=ReAct 工具 agent，attacker 造注入内容。9B victim 应比 27B 更可诱导。 |
+| **数据** | InjecAgent `ds`（m=2，544 真链）作快 reachability gate → 扩 **m≥3** 作 headline。 |
+| **RL** | **GRPO**（唯一能表达 per-step 的：DPO 无 per-step 奖励、PPO critic 冗余）；复用已建多轮 harness。 |
+| **模型/量化** | attacker **Qwen3.5-4B int4 QLoRA**；victim **Qwen3.5-9B FP8/int8**（其 tool-call 决策=被测信号，保质 + spot-check）。 |
+
+**Stage 0 已建 + CPU 全过**：`tooluse_oracle.py`（m 步门控链 golden——m=2 复现 ds、m=3 给 5 档；因果门控 + benign tool 不计 + 单调）+ `tooluse_injection.py`（`ToolUseInjectionDomain`，InjecAgent 薄子类，复用 ReAct victim + 注入 + OOD 切分；Stage-0 test 全过）。模型配置已更新（env 可覆盖）。
+
+**阻塞**：H20 **SSH 不可达**（banner 错 → 容器关或 `.env` creds 轮换）。换模型/provision/Gate 1′/GPU 全等服务器恢复 + 用户贴新 SSH。**下一步**：连通后 provision 4B/9B → 接线 tool-use victim（ReAct loop）+ `--domain tooluse` → Gate 1′（9B 是否停在部分链）→ Gate 2 → 判决。详见 `docs/plans/h1-tooluse-plan.md` + HANDOFF.md。
+
 ---
 
 ## Resolution（关闭议题时必填）

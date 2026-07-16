@@ -38,9 +38,9 @@ from src.domains.extraction_multifield import MultiFieldExtractionDomain  # noqa
 from src.mt_grpo import frac_zero_gradient, group_advantages, per_turn_rewards  # noqa: E402
 from src.mt_rollout import rollout_batch  # noqa: E402
 
-ATTACKER_MODEL = "Qwen/Qwen3-8B"
+ATTACKER_MODEL = os.environ.get("ATTACKER_MODEL", "Qwen/Qwen3.5-4B")   # tool-use reframe: lighter models
 VICTIM_URL = os.environ.get("VICTIM_URL", "http://127.0.0.1:8000/v1")
-VICTIM_MODEL = os.environ.get("VICTIM_MODEL", "qwen3.6-27b")
+VICTIM_MODEL = os.environ.get("VICTIM_MODEL", "qwen3.5-9b")
 _FIN = re.compile(r"Final Answer:\s*(.*)", re.DOTALL | re.IGNORECASE)
 
 
