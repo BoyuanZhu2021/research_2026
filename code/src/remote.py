@@ -54,9 +54,13 @@ def run(cli: paramiko.SSHClient, cmd: str, timeout: int = 300, login: bool = Tru
     return rc, out, err
 
 
-def run_bg(cli: paramiko.SSHClient, cmd: str, logfile: str) -> None:
+def run_bg(cli: paramiko.SSHClient, cmd: str, logfile: str, *, append: bool = False) -> None:
     """Start `cmd` detached (nohup) writing to `logfile`; returns immediately (survives SSH drop)."""
-    detached = f"nohup bash -lc {shlex.quote(cmd)} > {shlex.quote(logfile)} 2>&1 & echo started_pid=$!"
+    redirect = ">>" if append else ">"
+    detached = (
+        f"nohup bash -lc {shlex.quote(cmd)} {redirect} {shlex.quote(logfile)} "
+        "2>&1 & echo started_pid=$!"
+    )
     _i, o, _e = cli.exec_command(detached, timeout=30)
     print(o.read().decode(errors="replace").strip())
 
@@ -85,7 +89,7 @@ echo "=== cuda ==="; nvcc --version 2>/dev/null | tail -1 || echo no-nvcc
 echo "=== python/conda ==="; which python python3 conda 2>/dev/null; python --version 2>&1
 echo "=== conda envs ==="; conda env list 2>/dev/null || echo no-conda
 echo "=== torch ==="; python -c "import torch;print('torch',torch.__version__,'cuda',torch.version.cuda,'avail',torch.cuda.is_available())" 2>&1 | tail -1
-echo "=== vllm ==="; python -c "import vllm;print('vllm',vllm.__version__)" 2>&1 | tail -1
+echo "=== vllm ==="; /root/miniconda3/envs/vllm/bin/python -c "import vllm;print('vllm',vllm.__version__)" 2>&1 | tail -1
 echo "=== trl ==="; python -c "import trl;print('trl',trl.__version__)" 2>&1 | tail -1
 echo "=== disk ==="; df -h /root/autodl-tmp | tail -1
 echo "=== hf_home ==="; du -sh /root/autodl-tmp/hf_home 2>/dev/null; ls /root/autodl-tmp/hf_home 2>/dev/null | head

@@ -70,7 +70,9 @@ class TraceLogger:
         self.close()
 
 
-_REQ_KEYS = ("provider", "model", "max_tokens", "temperature", "enable_thinking", "seed")
+_REQ_KEYS = (
+    "provider", "model", "max_tokens", "temperature", "enable_thinking", "seed", "extra",
+)
 
 
 class LoggedClient:

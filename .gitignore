@@ -15,6 +15,7 @@ venv/
 .ipynb_checkpoints/
 
 # 实验产物（科研协议特有）
+artifacts/
 code/runs/
 code/outputs/
 code/checkpoints/

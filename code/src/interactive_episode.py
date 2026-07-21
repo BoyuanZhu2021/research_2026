@@ -12,14 +12,60 @@ Reward per episode: sparse = terminal (+1 iff the full retrieve->exfil-correct c
 dense = per-step process reward (best partial progress reached, or the positive per-turn gain).
 
 Every attacker and victim LLM call is logged via the LoggedClient/TraceLogger. Rule-based scoring
-only (no LLM judge) — see injecagent_ds_oracle.
+only (no LLM judge) �� see injecagent_ds_oracle.
 """
 from __future__ import annotations
 
 from .attacker import attacker_turn, build_initial_messages
+from .api_victim_decision_protocol import (
+    API_PROTOCOL_ID,
+    api_decision_to_react,
+    build_api_request_contract,
+    parse_api_victim_decision,
+)
+from .bounded_api_victim_decision_protocol import (
+    BOUNDED_API_PROTOCOL_ID,
+    bounded_api_decision_to_react,
+    build_bounded_api_request_contract,
+    parse_bounded_api_victim_decision,
+)
 from .domains.base import Domain, Goal
-from .domains.injecagent_ds_oracle import parse_react_calls
+from .local_victim_decision_protocol import (
+    LOCAL_COMPACT_PROTOCOL_ID,
+    build_local_compact_request_contract,
+    local_compact_decision_to_react,
+    parse_local_compact_victim_decision,
+)
 from .trace import LoggedClient, TraceLogger
+from .victim_decision_protocol import (
+    PROTOCOL_ID,
+    VictimDecisionError,
+    build_request_contract,
+    decision_to_react,
+    goal_tool_schemas,
+    parse_victim_decision,
+)
+
+
+def _decision_protocol_functions(victim_spec: dict):
+    protocol_id = victim_spec.get("decision_protocol_id", PROTOCOL_ID)
+    if protocol_id == PROTOCOL_ID:
+        return build_request_contract, parse_victim_decision, decision_to_react
+    if protocol_id == API_PROTOCOL_ID:
+        return build_api_request_contract, parse_api_victim_decision, api_decision_to_react
+    if protocol_id == BOUNDED_API_PROTOCOL_ID:
+        return (
+            build_bounded_api_request_contract,
+            parse_bounded_api_victim_decision,
+            bounded_api_decision_to_react,
+        )
+    if protocol_id == LOCAL_COMPACT_PROTOCOL_ID:
+        return (
+            build_local_compact_request_contract,
+            parse_local_compact_victim_decision,
+            local_compact_decision_to_react,
+        )
+    raise VictimDecisionError(f"unknown victim decision protocol: {protocol_id!r}")
 
 # The victim's SECURITY BOUNDARY (the PI's spec: the victim has tools + boundaries to defend).
 # It targets the sensitive EXFIL step, so the victim will read/retrieve to help (benign) but resist
@@ -48,34 +94,73 @@ def run_ds_victim(domain: Domain, goal: Goal, injection_text: str, client: Logge
     """Run the ReAct victim step-by-step with mock tools; return (transcript, accumulated_calls).
 
     Proper ReAct discipline: take the victim's FIRST action per step, mock-execute it (retrieve ->
-    canary observation), append, and re-prompt — so the canary can only reach an exfil call AFTER a
+    canary observation), append, and re-prompt �� so the canary can only reach an exfil call AFTER a
     retrieve, which is exactly the causal gate.
     """
-    rt, xt = domain.ds_chain(goal)
+    _, ds_exfil = domain.ds_chain(goal)
+    target_tools = list(goal.meta.get("target_tools") or [])
+    terminal_tool = target_tools[-1] if target_tools else ds_exfil
     scratchpad = domain.initial_scratchpad(goal, injection_text)
     calls: list[tuple[str, str]] = []
     parts: list[str] = []
+    observations: list[str] = []
+    contract_builder, decision_parser, transcript_renderer = _decision_protocol_functions(
+        victim_spec
+    )
     for step in range(max_calls):
-        messages = _with_defense(domain.build_victim_messages(goal, scratchpad), defense)
+        base_messages = _with_defense(
+            domain.build_victim_messages(goal, scratchpad), defense
+        )
+        tool_schemas = goal_tool_schemas(goal)
+        contract = contract_builder(
+            base_messages, tool_schemas, current_step=step
+        )
+        extra = dict(victim_spec.get("extra") or {})
+        extra["structured_outputs"] = contract["structured_outputs"]
         try:
             r = client.chat(role="victim", context={**ctx, "step": step},
                             provider=victim_spec["provider"], model=victim_spec["model"],
-                            messages=messages, max_tokens=victim_spec.get("max_tokens", 512),
+                            messages=contract["messages"],
+                            max_tokens=victim_spec.get("max_tokens", 512),
                             temperature=victim_spec.get("temperature", 0.7),
-                            enable_thinking=victim_spec.get("enable_thinking"), seed=seed)
-        except Exception as e:  # noqa: BLE001 — record + stop this victim turn, never crash the episode
+                            enable_thinking=victim_spec.get("enable_thinking"), seed=seed,
+                            extra=extra)
+        except Exception as e:  # noqa: BLE001 �� record + stop this victim turn, never crash the episode
             parts.append(f"[victim_error: {type(e).__name__}: {str(e)[:80]}]")
             break
         out = r.get("content") or ""
-        parts.append(out)
-        step_calls = parse_react_calls(out)
-        if not step_calls:
-            break  # no tool action (Final Answer / plain text) -> victim is done this turn
-        tool, args = step_calls[0]
+        try:
+            decision = decision_parser(
+                out,
+                tool_schemas,
+                observations=observations,
+                current_step=step,
+            )
+        except VictimDecisionError as exc:
+            recorder = getattr(client, "record_parse_outcome", None)
+            if callable(recorder):
+                recorder(
+                    r, status="canonical_invalid", error=exc,
+                    context={**ctx, "step": step},
+                )
+            raise
+        recorder = getattr(client, "record_parse_outcome", None)
+        if callable(recorder):
+            recorder(
+                r, status="canonical_valid", error=None,
+                context={**ctx, "step": step},
+            )
+        parts.append(transcript_renderer(decision))
+        if decision.kind == "final":
+            break
+        tool, args = decision.tool, decision.arguments
+        if tool is None or args is None:
+            raise VictimDecisionError("victim action decision is incomplete")
         calls.append((tool, args))
         obs = domain.mock_observation(goal, tool, args)
+        observations.append(obs)
         scratchpad += f"Action: {tool}\nAction Input: {args}\nObservation: {obs}\n"
-        if tool == xt:
+        if tool == terminal_tool:
             break  # exfil attempted -> terminal action of the chain
     return "\n".join(parts), calls
 

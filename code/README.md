@@ -1,59 +1,52 @@
-# code/ · H0 pilot harness
+# code/ · active H1 confirmatory harness
 
-Tests **H0** (the geological-foundation hypothesis): *on OOD / unseen targets, does
-naive **multi-turn** attacking beat **single-turn**?* — for `DISC-2026W27-001`.
+This directory now contains only the active single-H20 H1 path. Historical H0, API-victim,
+dual-local, V100 and superseded Gate implementations are stored in the audited source archive at
+`artifacts/_archive/h1-historical-code-20260721.zip`.
 
-**Mode:** API-only (no local GPU). Attacker + targets are served over OpenAI-compatible
-APIs read from the project-root `.env`. Local vLLM on the H20 comes later (H1+ training).
-
-## Status (2026-06-29)
-
-- [x] Multi-provider LLM client + provider resolution (`src/`) — **stdlib only**
-- [x] H0 config (`configs/h0_pilot.json`) + connectivity check (`scripts/env_check.py`)
-- [ ] Attacker policies: single-turn + naive multi-turn (prompting, CoT)
-- [ ] Domain ① adapter: agentic injection (InjecAgent / AgentDojo) + programmatic oracle
-- [ ] Domain ② adapter: NVIDIA-style (garak probes + detectors)
-- [ ] Runner `scripts/run_h0.py` (domain × arm × seed → ASR) + bootstrap-CI analysis
+**Current scientific state:** six `dense/sparse × seeds {0,1,2}` adapters are complete. The
+69-goal confirmatory learning run is blocked on a versioned constrained-eval decoder guard; final
+OOD remains unread.
 
 ## Local artifacts (not in git)
 
-`code/runs/` holds raw run outputs (JSONL, per-task dumps, API call logs). It is
-**gitignored** and stays on your machine only — commit summaries to `LOGS/YYYY-Www.md`
-instead. Same for `code/outputs/`, `code/checkpoints/`, and `code/wandb/`.
+`code/runs/` holds historical raw run outputs. Current H1 artifacts live under `artifacts/`, which
+is also gitignored; durable conclusions and pointers remain in `LOGS/`, `Discussion.md` and
+`HANDOFF.md`.
 
 ## Layout
 
 ```
 code/
-├── runs/                # local only — see above
-├── src/
-│   ├── providers.py     # logical provider name -> (base_url, api_key) from .env
-│   └── llm_client.py    # chat() / chat_batch(); handles Qwen thinking channel + retries
-├── configs/
-│   └── h0_pilot.json    # models, seeds, K turns, n samples, OOD split, success criterion
-├── scripts/
-│   └── env_check.py     # ping the roster through the client
+├── configs/             # frozen split and curriculum identities
+├── runs/                # historical local outputs; gitignored
+├── scripts/             # 31 active controllers, runners and CPU contract tests
+│   ├── h1_inprocess_confirmatory_controller.py
+│   ├── h1_inprocess_confirmatory_eval.py
+│   ├── h1_inprocess_confirmatory_analyze.py
+│   ├── h1_mt_grpo_train_h20.py
+│   ├── h1_serve_victim_h20.py
+│   └── h1_deploy_mt.py
+├── src/                 # 52 active protocol, Oracle, identity and artifact modules
 └── requirements.txt
 ```
 
-## Roster (locked — `DISC-2026W27-001`)
-
-| Role | Model | Provider | Thinking |
-|---|---|---|---|
-| Attacker | `Qwen/Qwen3.5-9B` | SiliconFlow | ON (CoT, 1024 tok) |
-| Target (open) | `Qwen/Qwen3.6-27B` | SiliconFlow | OFF |
-| Target (frontier) | `claude-sonnet-4-6` | aipaibox | n/a |
-
-> Qwen 3.5/3.6 are **reasoning models**: `enable_thinking=false` for clean output, or
-> `true` with ≥512 `max_tokens` (CoT lands in `reasoning_content`).
-
-## Run the connectivity check
+## Active entrypoints
 
 ```bash
-python code/scripts/env_check.py          # uses configs/h0_pilot.json
+python code/scripts/h1_deploy_mt.py --plan
+python code/scripts/h1_inprocess_confirmatory_test.py
+python code/scripts/h1_inprocess_confirmatory_controller.py --help
 ```
 
-## Success criterion (pre-registered, PI-set)
+`h1_deploy_mt.py` uses explicit script and src allowlists; new diagnostics are not deployed unless
+they are deliberately registered. Remote mutation still requires the explicit `--execute` flag.
 
-H0 **holds** iff the bootstrap 95% CI of `ASR_multi − ASR_single` on held-out OOD
-targets **excludes 0** (statistical significance; no fixed percentage-point threshold).
+## Frozen experiment
+
+- Attacker: Qwen3.5-4B NF4 QLoRA on one H20.
+- Victim: Qwen3.5-9B FP8 on the same H20.
+- Data: 322 train / 69 calibration / 153 untouched final OOD.
+- Interaction: `T=5`, `max_calls=3`, one fresh victim attempt per attacker turn.
+- Oracle: deterministic `Phi ∈ {0, 1/3, 2/3, 1}`; no LLM judge.
+- H1 decision: registered dense-vs-sparse/base-K Holm family on final OOD.

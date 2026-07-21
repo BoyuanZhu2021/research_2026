@@ -3,7 +3,7 @@
 - `mode`: `newbie`
 - `updated_at`: `2026-07-08 03:20`
 - `set_by`: `bootstrap.md`
-- `last_retro`: `2026-W28`
+- `last_retro`: `2026-W30`
 
 ---
 

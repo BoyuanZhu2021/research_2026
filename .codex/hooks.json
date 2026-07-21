@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PROJECT_DIR=\"${CLAUDE_PROJECT_DIR:-$PWD}\"; SCRIPT=\"$PROJECT_DIR/tools/session_check.py\"; if [ ! -f \"$SCRIPT\" ]; then echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"[协议异常] tools/session_check.py 缺失；不得静默开始工作。\"}}'; elif [ -x \"$PROJECT_DIR/.venv/Scripts/python.exe\" ]; then \"$PROJECT_DIR/.venv/Scripts/python.exe\" \"$SCRIPT\" --hook; elif [ -x \"$PROJECT_DIR/.venv/bin/python\" ]; then \"$PROJECT_DIR/.venv/bin/python\" \"$SCRIPT\" --hook; elif command -v python3 >/dev/null 2>&1; then python3 \"$SCRIPT\" --hook; elif command -v python >/dev/null 2>&1; then python \"$SCRIPT\" --hook; elif [ -f \"$PROJECT_DIR/bootstrap.md\" ]; then echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"[未初始化] Python 不可用；请手动读取 bootstrap.md，并要求用户仅回复 A 或 B。\"}}'; else echo '{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"[协议异常] Python 不可用，session_check 未运行；请手动检查 MODE.md、HANDOFF.md 与 Discussion.md，修复 harness 后再工作。\"}}'; fi",
+            "timeout": 10,
+            "statusMessage": "运行协议会话自检 (tools/session_check.py)..."
+          }
+        ]
+      }
+    ]
+  }
+}

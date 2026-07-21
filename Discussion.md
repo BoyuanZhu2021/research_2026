@@ -232,6 +232,21 @@ PI 指令：加速迭代 + 让 **tool-use 成为核心**。放弃前一轮 chat-
 
 **阻塞**：H20 **SSH 不可达**（banner 错 → 容器关或 `.env` creds 轮换）。换模型/provision/Gate 1′/GPU 全等服务器恢复 + 用户贴新 SSH。**下一步**：连通后 provision 4B/9B → 接线 tool-use victim（ReAct loop）+ `--domain tooluse` → Gate 1′（9B 是否停在部分链）→ Gate 2 → 判决。详见 `docs/plans/h1-tooluse-plan.md` + HANDOFF.md。
 
+【Agent @codex】【2026-07-20 22:47】Weekly Retro（2026-W29）：
+
+- **已驳斥假设**：无。上周没有 `Falsified=Y` 的 EXP；旧 chat-disclosure 路线的 H1 判决因 GPU 被回收而未判，随后由 PI 明确终止，不能记成科学负结果。
+- **已支持假设**：tool-use Stage 0 的工程假设获支持——m 步因果门控 oracle、InjecAgent domain 和按工具 OOD 切分均通过 CPU golden/回归；m=2 可产生 `{0,⅓,⅔,1}` 分级（[EXP-2026W29-002](LOGS/2026-W29.md#exp-2026w29-002)）。旧路线还验证了批量 rollout 可达到 **5.5×** 吞吐、KL 稳定化后 grad norm 约 **20**，但这些不是 H1 的最终支持证据（[EXP-2026W29-001](LOGS/2026-W29.md#exp-2026w29-001)）。
+- **悬而未决问题**：H1 的 decision-bearing 结果仍未得到；需要在 tool-use 设定中完成多 seed dense/sparse、69-goal learning 完整性检查、首次读取 153-goal final OOD，并执行预注册 Holm 三对比。EXP-2026W29-001 已因 PI 转向而终止，不再补跑其 chat-disclosure OOD。
+- **与 `idea.md` / `method.md` 的冲突**：`idea.md` 已把 H1 焦点指向 gated/tool-use，但 `method.md §2` 仍以 `score_disclosure` 和“全披露”描述 Φ/A2；当前正式实验实际使用程序化 tool-chain oracle。为避免未经 PI 批准改写形式化定义，本次仅记录该差异，待 H1 结果产生后起草对齐变更并交由 PI 决定。
+
+【Agent @codex】【2026-07-20 23:58】CP-P2 confirmatory learning crash（[EXP-2026W30-029](LOGS/2026-W30.md#exp-2026w30-029)）：base-K4 完成 276/276 rows（ASR 15/276=5.43%），dense-s0 完成 69/69 rows（ASR 8/69=11.59%），但 sparse-s0 在第二个 attacker batch 因唯一 prompt-echo row 含 reserved literal `<inject>` 而 fail-closed；partial evidence 为 63 attacker / 152 victim raw rows，4/4 文件 remote/local SHA-256 一致。九个注册训练/heldout raw attacker ledgers的 reserved-tag 命中为 0，所以 adapters 未显示污染；当前 campaign 不完整、final OOD 未读、H1 仍 unset。建议 PI 批准一个新的对称 decoder-constrained evaluation profile，并从 fresh base-K4 起重跑完整七 panel；禁止混用修复前后结果。
+
+【Agent @codex】【2026-07-21 00:40】Decoder-guard feasibility（[EXP-2026W30-030](LOGS/2026-W30.md#exp-2026w30-030)）：tokenizer-only 审计推翻朴素 256-sequence `bad_words_ids` 方案。Qwen 会把 `>` 与右侧引号/反引号/括号融合；128 tags × 14 left × 6 right 的 10,752 个组合中有 7,104 个未覆盖。正式修复必须是采样前 text-aware token-level DFA/logits masking，不能事后截断或修补。模型调用=0、final OOD 未读；新 profile 仍待 PI 批准。
+
+【Agent @codex】【2026-07-21】Constrained-eval CE-P1/4 完成（[EXP-2026W30-031](LOGS/2026-W30.md#exp-2026w30-031)）：PI 以“继续”批准 HANDOFF 唯一建议动作后，已注册 `h1-gate-partial-confirmatory-constrained-eval-v2`。text-aware DFA 在采样前覆盖 128/128 大小写变体、跨 token 与 `ect>"` 右融合场景；25 项相关 CPU 测试通过，raw attacker text + response token IDs 和 raw victim response 保持落盘，parser 仍硬失败且无 repair。新本地 deployment 为 95 files/tree `f56c3c28…427c`，远端仍是旧 `4323fd4a…47c8`，模型调用=0、final OOD 未读。下一步是在唯一实例 `20d84f9474-d7816b14` 上事务部署并通过真实 Qwen tokenizer/runtime gate，然后 fresh 重跑完整七 panel learning。
+
+【Agent @codex】【2026-07-21】Constrained-eval CE-P2/4 PASS（[EXP-2026W30-032](LOGS/2026-W30.md#exp-2026w30-032)）：exact 95-file tree `989df391…df7f` 已在实例 `20d84f9474-d7816b14` 事务 promotion，51 项 active protocol tests 与全部 remote gates 通过；canonical victim 已作为 PID 74630 重启。真实 Qwen3.5-4B tokenizer（vocab 248,077）上 10,752/10,752 标签上下文在完成前被 mask，Transformers logits interface 亦 PASS；guard/transition identity 为 `f3d30818…cff4` / `7dd9516e…a55`。attacker/victim 模型调用=0、final OOD 未读。下一步直接启动 fresh 七 panel learning，不再添加 smoke。
+
 ---
 
 ## Resolution（关闭议题时必填）

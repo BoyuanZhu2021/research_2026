@@ -14,7 +14,6 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-import remote as RM  # noqa: E402
 
 TMP = "/root/autodl-tmp"
 CHECK = rf"""
@@ -30,8 +29,8 @@ echo "## progress (last 3 steps)";   tail -3 {TMP}/h1/progress.jsonl 2>/dev/null
 """
 
 
-def snapshot(cli):
-    rc, out, err = RM.run(cli, CHECK, timeout=90)
+def snapshot(cli, remote_module):
+    rc, out, err = remote_module.run(cli, CHECK, timeout=90)
     return out.rstrip() + (("\nSTDERR: " + err[:200]) if err.strip() else "")
 
 
@@ -41,9 +40,13 @@ def main():
     ap.add_argument("--interval", type=int, default=20)
     args = ap.parse_args()
 
+    # The remote deployment validates --help with a minimal base Python; load Paramiko only after
+    # argparse has handled that CPU-only path.
+    import remote as RM
+
     if not args.watch:
         cli = RM.connect()
-        print(snapshot(cli))
+        print(snapshot(cli, RM))
         cli.close()
         return
 
@@ -53,7 +56,7 @@ def main():
             cli = RM.connect()
             stamp = datetime.datetime.now().strftime("%H:%M:%S")
             print(f"\n===== {stamp} =====")
-            print(snapshot(cli))
+            print(snapshot(cli, RM))
             cli.close()
         except KeyboardInterrupt:
             print("\nstopped.")
