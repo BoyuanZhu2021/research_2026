@@ -30,6 +30,7 @@ from src.inprocess_curriculum_protocol import (  # noqa: E402
     AUTHORIZED_INSTANCE, file_sha256, seal_payload, validate_seal,
 )
 from src.local_vllm_victim import (  # noqa: E402
+    FINAL_C0_TRANSPORT_ID, FINAL_C0_TRANSPORT_POLICY_SHA256,
     LOCAL_VICTIM_MODEL, LOCAL_VICTIM_PROVIDER, LocalVllmVictimClient,
     load_local_vllm_ledger,
 )
@@ -38,8 +39,8 @@ from src.qwen35_fast_kernels import require_qwen35_fast_kernels  # noqa: E402
 from src.tooluse_gate1_spec import VICTIM_MAX_TOKENS  # noqa: E402
 
 
-PROFILE_ID = "h1-gate-partial-confirmatory-constrained-eval-v2"
-PROFILE_CONFIG = CODE / "configs" / "h1_confirmatory_constrained_eval_v2.json"
+PROFILE_ID = "h1-gate-partial-confirmatory-final-c0-transport-v1"
+PROFILE_CONFIG = CODE / "configs" / "h1_confirmatory_final_c0_transport_v1.json"
 PHASES = {"learning_report": ("calibration", 69), "final_ood": ("final_ood", 153)}
 GRID = (("base", None), ("dense", 0), ("sparse", 0), ("dense", 1),
         ("sparse", 1), ("dense", 2), ("sparse", 2))
@@ -47,7 +48,7 @@ FINAL_AUTH_KIND = "h1_gate_partial_final_ood_authorization"
 REQUIRED_DEPLOYMENT_PATHS = pilot.REQUIRED_DEPLOYMENT_PATHS + (
     "code/scripts/h1_inprocess_confirmatory_eval.py",
     "code/scripts/h1_inprocess_confirmatory_analyze.py",
-    "code/configs/h1_confirmatory_constrained_eval_v2.json",
+    "code/configs/h1_confirmatory_final_c0_transport_v1.json",
 )
 
 
@@ -79,12 +80,20 @@ def _tree_sha256(root: Path) -> str:
 def _load_profile_config() -> dict:
     value = json.loads(PROFILE_CONFIG.read_text(encoding="utf-8"))
     guard = value.get("decoder_guard") or {}
+    transport = value.get("victim_transport") or {}
     campaign = value.get("campaign_policy") or {}
     if (
         value.get("schema_version") != 1
         or value.get("profile_id") != PROFILE_ID
         or guard.get("guard_id") != "h1-content-only-reserved-tag-dfa-v1"
         or guard.get("post_generation_repair") is not False
+        or transport.get("transport_id") != FINAL_C0_TRANSPORT_ID
+        or transport.get("policy_payload_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
+        or transport.get("strict_parse_first") is not True
+        or transport.get("action_decisions_fail_closed") is not True
+        or transport.get("http_retry") is not False
+        or campaign.get("post_exposure_confirmation") is not True
         or campaign.get("fresh_campaign_required") is not True
         or campaign.get("old_and_new_panel_mixing_forbidden") is not True
         or campaign.get("registered_grid")
@@ -154,12 +163,22 @@ def _validate_final_inputs(args: argparse.Namespace, provenance: dict) -> tuple[
         or report.get("profile_id") != PROFILE_ID
         or report.get("complete") is not True
         or report.get("decision_bearing") is not False
+        or report.get("post_exposure_confirmation") is not True
+        or report.get("victim_final_c0_transport_id")
+        != FINAL_C0_TRANSPORT_ID
+        or report.get("victim_final_c0_transport_policy_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
     ):
         raise ValueError("final OOD requires a complete non-decision-bearing learning report")
     if (
         authorization.get("kind") != FINAL_AUTH_KIND
         or authorization.get("instance_id") != AUTHORIZED_INSTANCE
         or authorization.get("profile_id") != PROFILE_ID
+        or authorization.get("post_exposure_confirmation") is not True
+        or authorization.get("victim_final_c0_transport_id")
+        != FINAL_C0_TRANSPORT_ID
+        or authorization.get("victim_final_c0_transport_policy_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
         or authorization.get("learning_report_payload_sha256") != report.get("payload_sha256")
         or authorization.get("learning_report_file_sha256") != file_sha256(args.learning_report)
         or authorization.get("final_campaign_id") != args.campaign_id
@@ -198,6 +217,7 @@ def _evaluate_chunked(*, model, tokenizer, decoder_guard: ReservedTagDecoderGuar
         final_answer_max_length=512,
         action_string_max_length=512,
         strict_declared_action_arguments=True,
+        final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
     )
     victim_batch = core.make_victim_batch_fn(
         domain, core.FIXED_TRAINING["workers"], client, max_calls=3,
@@ -232,7 +252,9 @@ def _evaluate_chunked(*, model, tokenizer, decoder_guard: ReservedTagDecoderGuar
                 rows.append(row)
     elapsed = time.monotonic() - started
     victim_ledger = load_local_vllm_ledger(
-        run_dir / "raw_victim_ledger.jsonl", require_complete=True
+        run_dir / "raw_victim_ledger.jsonl",
+        require_complete=True,
+        expected_final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
     )
     expected = len(goals) * (4 if args.arm == "base" else 1)
     if len(rows) != expected or any(not math.isfinite(float(row["max_phi"])) for row in rows):
@@ -300,6 +322,7 @@ def execute(args: argparse.Namespace) -> Path:
         "profile_config": profile_config,
         "phase": args.phase,
         "decision_bearing": args.phase == "final_ood",
+        "post_exposure_confirmation": True,
         "campaign_id": args.campaign_id,
         "panel": panel_key(args.arm, args.seed),
         "arm": args.arm,
@@ -317,6 +340,10 @@ def execute(args: argparse.Namespace) -> Path:
         "strict_declared_action_arguments": True,
         "final_answer_max_length": 512,
         "action_string_max_length": 512,
+        "victim_final_c0_transport_id": FINAL_C0_TRANSPORT_ID,
+        "victim_final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+        ),
         "hardware": hardware,
         "kernel_status": kernel_status,
         "attacker_decoder_guard": decoder_guard_identity,
@@ -335,6 +362,7 @@ def execute(args: argparse.Namespace) -> Path:
         "profile_id": PROFILE_ID,
         "phase": args.phase,
         "decision_bearing": args.phase == "final_ood",
+        "post_exposure_confirmation": True,
         "campaign_id": args.campaign_id,
         "panel": panel_key(args.arm, args.seed),
         "arm": args.arm,

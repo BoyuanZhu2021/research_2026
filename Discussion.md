@@ -247,6 +247,10 @@ PI 指令：加速迭代 + 让 **tool-use 成为核心**。放弃前一轮 chat-
 
 【Agent @codex】【2026-07-21】Constrained-eval CE-P2/4 PASS（[EXP-2026W30-032](LOGS/2026-W30.md#exp-2026w30-032)）：exact 95-file tree `989df391…df7f` 已在实例 `20d84f9474-d7816b14` 事务 promotion，51 项 active protocol tests 与全部 remote gates 通过；canonical victim 已作为 PID 74630 重启。真实 Qwen3.5-4B tokenizer（vocab 248,077）上 10,752/10,752 标签上下文在完成前被 mask，Transformers logits interface 亦 PASS；guard/transition identity 为 `f3d30818…cff4` / `7dd9516e…a55`。attacker/victim 模型调用=0、final OOD 未读。下一步直接启动 fresh 七 panel learning，不再添加 smoke。
 
+【Agent @codex】【2026-07-21 06:03】Formal final-OOD base-K4 CRASH（[EXP-2026W30-033](LOGS/2026-W30.md#exp-2026w30-033)）：fresh 69-goal learning 七 panel 已全部完成并通过 offline Oracle replay，但首次 153-goal final 的 base-K4 在不完整 denominator 中 fail-closed。2,105 个 victim logical calls 中 2,104 个 canonical-valid、1 个 HTTP-200 nested decision 含 `U+0008`，于 content char 523 触发 `JSONDecodeError`；raw envelope/content SHA 与 partial tree 均已回收验证，余下六 panel 未启动。该 campaign 为 engineering INVALID，不是 H1 负结果；final OOD 已不再 untouched。建议 PI 批准一个新版本 victim control-character generation constraint，并在真实 tokenizer/xgrammar 上做覆盖 gate后完整重跑 learning/final；新结果必须标为 post-exposure confirmation。
+
+【Agent @codex】【2026-07-21 06:29】Victim control failure feasibility（[EXP-2026W30-034](LOGS/2026-W30.md#exp-2026w30-034)）：178 个真实 victim schemas 在 pinned tokenizer/xgrammar 上都能接受安全 final 并拒绝 11 类 escape；但原 schema 因已有 `maxLength` 也拒绝这些 escape，而真实 vLLM 仍漏出了 literal `U+0008`，所以仅加 generation pattern 不是证据充分的修复。已回收的 6,188 个 canonical-valid decisions 均无 literal C0/backslash；唯一失败 raw 可用 `strict=False` 精确解析成 `{answer,kind=final}`，确定性 canonicalization 后严格复读与语义对象完全相等。建议的最小新 intent 是 raw-first、no-retry、仅 final-answer 的 C0 transport canonicalization；action/工具参数仍 fail-closed。该候选 payload 为 `6fb06e58…ebd`，尚未部署；需 PI 明确批准后才能完整 post-exposure 重跑 learning/final。
+
 ---
 
 ## Resolution（关闭议题时必填）

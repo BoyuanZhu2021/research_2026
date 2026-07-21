@@ -2,8 +2,9 @@
 
 The local victim is still an external process from the trainer's point of view.  This
 client therefore records the credential-free request and the exact HTTP response bytes
-before parsing, just like the SiliconFlow boundary.  A malformed HTTP-200 response is
-never repaired or converted into a zero-reward sample.
+before parsing, just like the SiliconFlow boundary.  Malformed HTTP-200 responses fail
+closed except for the explicitly registered, semantic-preserving final-answer C0
+transport; no response is retried or converted into a zero-reward sample.
 """
 from __future__ import annotations
 
@@ -32,13 +33,35 @@ from .tooluse_gate1_spec import (
 from .victim_decision_protocol import canonical_sha256
 
 
-LOCAL_FAST_PROFILE_ID = "h20-attacker-cached-nf4-local-fp8-victim-v1"
+LOCAL_FAST_PROFILE_ID = "h20-attacker-cached-nf4-local-fp8-victim-final-c0-v1"
 LOCAL_VICTIM_PROVIDER = "local-vllm"
 LOCAL_VICTIM_MODEL = VICTIM_H20_SERVED_NAME
 LOCAL_VICTIM_URL = ENDPOINT + "/chat/completions"
 LOCAL_VICTIM_TEMPERATURE = 0.0
 LOCAL_VICTIM_TIMEOUT_SECONDS = 120.0
 LOCAL_LEDGER_KIND = "h1_local_vllm_victim_ledger_event"
+FINAL_C0_TRANSPORT_ID = "h1-victim-final-c0-canonicalization-v1"
+FINAL_C0_TRANSPORT_POLICY = {
+    "schema_version": 1,
+    "transport_id": FINAL_C0_TRANSPORT_ID,
+    "activation": "strict JSONDecodeError with Invalid control character only",
+    "accepted_shape": {
+        "kind": "final",
+        "exact_keys": ["answer", "kind"],
+        "answer_type": "string",
+    },
+    "action_decisions": "fail_closed",
+    "canonicalization": (
+        "json.dumps(parsed_strict_false, ensure_ascii=False, sort_keys=True, "
+        "separators=comma_colon)"
+    ),
+    "raw_response_logged_before_parse": True,
+    "retry": False,
+    "semantic_invariant": (
+        "json.loads(canonical)==json.loads(raw_content,strict=False)"
+    ),
+}
+FINAL_C0_TRANSPORT_POLICY_SHA256 = canonical_sha256(FINAL_C0_TRANSPORT_POLICY)
 JSON_CONTROL_ESCAPE_BAD_WORDS = (
     r"\b", r"\f", r"\r", r"\t",
     *(f"\\u{codepoint:04x}" for codepoint in range(32) if codepoint != 10),
@@ -85,6 +108,10 @@ def local_fast_profile() -> dict:
             "http_200_malformed_retry": False,
             "prefix_repair": False,
             "raw_response_logged_before_parse": True,
+            "final_c0_transport": copy.deepcopy(FINAL_C0_TRANSPORT_POLICY),
+            "final_c0_transport_payload_sha256": (
+                FINAL_C0_TRANSPORT_POLICY_SHA256
+            ),
         },
         "victim_decision_protocol": copy.deepcopy(
             LOCAL_COMPACT_VICTIM_DECISION_PROTOCOL
@@ -99,6 +126,76 @@ LOCAL_FAST_PROFILE = local_fast_profile()
 
 class LocalVllmVictimError(RuntimeError):
     """The exact local-vLLM boundary failed closed."""
+
+
+def _json_string_control_positions(content: str) -> list[dict[str, Any]]:
+    """Locate literal C0 controls inside JSON strings without changing the bytes."""
+    result: list[dict[str, Any]] = []
+    in_string = False
+    escaped = False
+    for position, character in enumerate(content):
+        if not in_string:
+            if character == '"':
+                in_string = True
+            continue
+        if escaped:
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif character == '"':
+            in_string = False
+        elif ord(character) < 32:
+            result.append({
+                "position": position,
+                "codepoint": f"U+{ord(character):04X}",
+            })
+    return result
+
+
+def _canonicalize_final_c0_content(
+    content: str,
+    error: json.JSONDecodeError,
+    *,
+    final_answer_max_length: int | None,
+) -> tuple[str, dict[str, Any]]:
+    """Canonicalize only the approved final-answer C0 transport failure."""
+    if error.msg != "Invalid control character at":
+        raise error
+    controls = _json_string_control_positions(content)
+    if not controls or error.pos not in {item["position"] for item in controls}:
+        raise error
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-standard JSON constant: {value}")
+
+    parsed = json.loads(content, strict=False, parse_constant=reject_constant)
+    if (
+        not isinstance(parsed, dict)
+        or set(parsed) != {"answer", "kind"}
+        or parsed.get("kind") != "final"
+        or not isinstance(parsed.get("answer"), str)
+        or (
+            final_answer_max_length is not None
+            and len(parsed["answer"]) > final_answer_max_length
+        )
+    ):
+        raise ValueError("control-character fallback is not an exact final decision")
+    canonical = json.dumps(
+        parsed, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    if json.loads(canonical, parse_constant=reject_constant) != parsed:
+        raise ValueError("control-character canonicalization changed semantics")
+    return canonical, {
+        "transport_id": FINAL_C0_TRANSPORT_ID,
+        "policy_payload_sha256": FINAL_C0_TRANSPORT_POLICY_SHA256,
+        "applied": True,
+        "strict_error": error.msg,
+        "strict_error_position": error.pos,
+        "controls": controls,
+        "original_content_sha256": _sha256_bytes(content.encode("utf-8")),
+        "canonical_content_sha256": _sha256_bytes(canonical.encode("utf-8")),
+        "semantic_object_sha256": canonical_sha256(parsed),
+    }
 
 
 class LocalVllmVictimClient:
@@ -119,6 +216,7 @@ class LocalVllmVictimClient:
         final_answer_max_length: int | None = None,
         action_string_max_length: int | None = None,
         strict_declared_action_arguments: bool = False,
+        final_c0_transport_id: str | None = None,
     ) -> None:
         self._timeout = float(timeout)
         if self._timeout <= 0:
@@ -151,6 +249,8 @@ class LocalVllmVictimClient:
             raise ValueError("local victim action string bound must be positive")
         if not isinstance(strict_declared_action_arguments, bool):
             raise ValueError("local victim strict argument policy must be boolean")
+        if final_c0_transport_id not in (None, FINAL_C0_TRANSPORT_ID):
+            raise ValueError("unknown local victim final C0 transport")
         self._endpoint = endpoint
         self._model = model
         self._provider = provider
@@ -159,6 +259,7 @@ class LocalVllmVictimClient:
         self._final_answer_max_length = final_answer_max_length
         self._action_string_max_length = action_string_max_length
         self._strict_declared_action_arguments = strict_declared_action_arguments
+        self._final_c0_transport_id = final_c0_transport_id
         self.ledger_path = Path(ledger_path)
         self.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         with self.ledger_path.open("x", encoding="utf-8"):
@@ -287,7 +388,7 @@ class LocalVllmVictimClient:
         body_bytes = _json_bytes(body)
         request_sha256 = _sha256_bytes(body_bytes)
         schema_sha256 = canonical_sha256(schema)
-        self._append({
+        request_event = {
             "event": "request",
             "call_id": call_id,
             "role": role or "victim",
@@ -297,7 +398,15 @@ class LocalVllmVictimClient:
             "request_sha256": request_sha256,
             "schema_sha256": schema_sha256,
             "request_body": copy.deepcopy(body),
-        })
+        }
+        if self._final_c0_transport_id is not None:
+            request_event.update({
+                "final_c0_transport_id": self._final_c0_transport_id,
+                "final_c0_transport_policy_sha256": (
+                    FINAL_C0_TRANSPORT_POLICY_SHA256
+                ),
+            })
+        self._append(request_event)
 
         started = time.monotonic()
         status: int | None = None
@@ -354,6 +463,7 @@ class LocalVllmVictimClient:
         returned_model: Any = None
         finish_reason: Any = None
         usage: dict[str, Any] = {}
+        transport: dict[str, Any] | None = None
         try:
             if status != 200:
                 raise ValueError(f"unexpected HTTP status {status}")
@@ -372,8 +482,30 @@ class LocalVllmVictimClient:
                 raise ValueError("local victim exhausted max_tokens")
             if any(marker in content for marker in VICTIM_REACT_STOP):
                 raise ValueError("local victim retained the Observation stop marker")
-            json.loads(content)
-        except Exception as exc:  # noqa: BLE001 - HTTP 200 malformed is never repaired
+            try:
+                json.loads(content)
+            except json.JSONDecodeError as strict_error:
+                if self._final_c0_transport_id is None:
+                    raise
+                original_content = content
+                content, transport = _canonicalize_final_c0_content(
+                    original_content,
+                    strict_error,
+                    final_answer_max_length=self._final_answer_max_length,
+                )
+            if self._final_c0_transport_id is not None and transport is None:
+                transport = {
+                    "transport_id": FINAL_C0_TRANSPORT_ID,
+                    "policy_payload_sha256": FINAL_C0_TRANSPORT_POLICY_SHA256,
+                    "applied": False,
+                    "original_content_sha256": _sha256_bytes(
+                        content.encode("utf-8")
+                    ),
+                    "canonical_content_sha256": _sha256_bytes(
+                        content.encode("utf-8")
+                    ),
+                }
+        except Exception as exc:  # noqa: BLE001 - all unregistered malformed cases fail closed
             self._append({
                 "event": "response",
                 "call_id": call_id,
@@ -394,7 +526,7 @@ class LocalVllmVictimClient:
                 f"local victim HTTP 200 response is invalid: {type(exc).__name__}: {exc}"
             ) from exc
 
-        self._append({
+        accepted_event = {
             "event": "response",
             "call_id": call_id,
             "http_status": status,
@@ -405,7 +537,10 @@ class LocalVllmVictimClient:
             "content": content,
             "content_sha256": _sha256_bytes(content.encode("utf-8")),
             "accepted": True,
-        })
+        }
+        if transport is not None:
+            accepted_event["final_c0_transport"] = copy.deepcopy(transport)
+        self._append(accepted_event)
         return {
             "content": content,
             "reasoning": message.get("reasoning_content") or "",
@@ -449,6 +584,7 @@ def load_local_vllm_ledger(
     expected_model: str = LOCAL_VICTIM_MODEL,
     expected_max_tokens: int = VICTIM_MAX_TOKENS,
     expected_ledger_kind: str = LOCAL_LEDGER_KIND,
+    expected_final_c0_transport_id: str | None = None,
 ) -> dict:
     artifact = Path(path)
     rows: list[dict] = []
@@ -468,7 +604,9 @@ def load_local_vllm_ledger(
         if not isinstance(call_id, str) or not call_id:
             raise ValueError("local victim ledger call_id is missing")
         calls.setdefault(call_id, []).append(row)
-    accepted = canonical_valid = 0
+    if expected_final_c0_transport_id not in (None, FINAL_C0_TRANSPORT_ID):
+        raise ValueError("unknown expected final C0 transport")
+    accepted = canonical_valid = canonicalized = 0
     for call_id, events in calls.items():
         requests = [row for row in events if row.get("event") == "request"]
         raw_rows = [row for row in events if row.get("event") == "response_raw"]
@@ -485,6 +623,13 @@ def load_local_vllm_ledger(
             or request_body.get("max_tokens") != expected_max_tokens
         ):
             raise ValueError(f"local victim call {call_id} request identity mismatch")
+        if requests[0].get("final_c0_transport_id") != expected_final_c0_transport_id:
+            raise ValueError(f"local victim call {call_id} transport identity mismatch")
+        if expected_final_c0_transport_id is not None and (
+            requests[0].get("final_c0_transport_policy_sha256")
+            != FINAL_C0_TRANSPORT_POLICY_SHA256
+        ):
+            raise ValueError(f"local victim call {call_id} transport policy mismatch")
         accepted_rows = [row for row in responses if row.get("accepted") is True]
         if len(accepted_rows) == 1:
             accepted += 1
@@ -499,6 +644,71 @@ def load_local_vllm_ledger(
                 != row.get("raw_response_sha256")
             ):
                 raise ValueError(f"local victim call {call_id} raw response mismatch")
+        if len(accepted_rows) == 1:
+            response = accepted_rows[0]
+            content = response.get("content")
+            if (
+                not isinstance(content, str)
+                or _sha256_bytes(content.encode("utf-8"))
+                != response.get("content_sha256")
+            ):
+                raise ValueError(f"local victim call {call_id} content mismatch")
+            if expected_final_c0_transport_id is not None:
+                transport = response.get("final_c0_transport")
+                if (
+                    not isinstance(transport, Mapping)
+                    or transport.get("transport_id") != FINAL_C0_TRANSPORT_ID
+                    or transport.get("policy_payload_sha256")
+                    != FINAL_C0_TRANSPORT_POLICY_SHA256
+                    or transport.get("canonical_content_sha256")
+                    != response.get("content_sha256")
+                ):
+                    raise ValueError(
+                        f"local victim call {call_id} transport evidence mismatch"
+                    )
+                if len(raw_rows) != 1:
+                    raise ValueError(
+                        f"local victim call {call_id} transport raw count mismatch"
+                    )
+                raw_payload = json.loads(raw_rows[0]["raw_response"])
+                original_content = raw_payload["choices"][0]["message"]["content"]
+                if (
+                    not isinstance(original_content, str)
+                    or _sha256_bytes(original_content.encode("utf-8"))
+                    != transport.get("original_content_sha256")
+                ):
+                    raise ValueError(
+                        f"local victim call {call_id} original content mismatch"
+                    )
+                if transport.get("applied") is True:
+                    try:
+                        json.loads(original_content)
+                    except json.JSONDecodeError as strict_error:
+                        expected_content, expected_transport = (
+                            _canonicalize_final_c0_content(
+                                original_content,
+                                strict_error,
+                                final_answer_max_length=None,
+                            )
+                        )
+                    else:
+                        raise ValueError(
+                            f"local victim call {call_id} unnecessary canonicalization"
+                        )
+                    if content != expected_content or dict(transport) != expected_transport:
+                        raise ValueError(
+                            f"local victim call {call_id} canonicalization drift"
+                        )
+                    canonicalized += 1
+                elif transport.get("applied") is False:
+                    if content != original_content:
+                        raise ValueError(
+                            f"local victim call {call_id} clean content drift"
+                        )
+                else:
+                    raise ValueError(
+                        f"local victim call {call_id} transport applied flag mismatch"
+                    )
         if require_complete and (
             len(raw_rows) != 1
             or len(accepted_rows) != 1
@@ -512,6 +722,12 @@ def load_local_vllm_ledger(
         "logical_calls": len(calls),
         "accepted_responses": accepted,
         "canonical_valid": canonical_valid,
+        "final_c0_transport_id": expected_final_c0_transport_id,
+        "final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+            if expected_final_c0_transport_id is not None else None
+        ),
+        "final_c0_canonicalized": canonicalized,
         "complete": bool(require_complete and canonical_valid == len(calls)),
     }
 
@@ -519,6 +735,9 @@ def load_local_vllm_ledger(
 __all__ = [
     "LOCAL_FAST_PROFILE",
     "LOCAL_FAST_PROFILE_ID",
+    "FINAL_C0_TRANSPORT_ID",
+    "FINAL_C0_TRANSPORT_POLICY",
+    "FINAL_C0_TRANSPORT_POLICY_SHA256",
     "LOCAL_VICTIM_MODEL",
     "LOCAL_VICTIM_PROVIDER",
     "LocalVllmVictimClient",

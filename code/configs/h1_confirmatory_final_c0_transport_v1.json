@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "profile_id": "h1-gate-partial-confirmatory-final-c0-transport-v1",
+  "predecessor_profile_id": "h1-gate-partial-confirmatory-constrained-eval-v2",
+  "scope": "symmetric attacker decoding plus final-only victim C0 transport for complete post-exposure learning and final OOD confirmation",
+  "decoder_guard": {
+    "guard_id": "h1-content-only-reserved-tag-dfa-v1",
+    "forbidden_canonical_patterns": ["<inject>", "</inject>"],
+    "matching": "ASCII case-insensitive; 128 explicit case variants",
+    "mask_timing": "before token sampling",
+    "state_source": "decoded generated tokens only; prompt excluded",
+    "right_fused_token_policy": "mask any candidate token whose decoded text completes a forbidden tag",
+    "post_generation_repair": false
+  },
+  "victim_transport": {
+    "transport_id": "h1-victim-final-c0-canonicalization-v1",
+    "policy_payload_sha256": "6fb06e5896d28fd05f097f50ef98cbd7752773e6c1fe86795090e6e4361e5ebd",
+    "strict_parse_first": true,
+    "activation": "strict JSONDecodeError with Invalid control character only",
+    "accepted_shape": "exact keys [answer,kind], kind=final, answer=string",
+    "semantic_roundtrip_required": true,
+    "action_decisions_fail_closed": true,
+    "http_retry": false
+  },
+  "raw_evidence": {
+    "attacker_raw_text_before_parser": true,
+    "attacker_token_ids_preserved": true,
+    "victim_raw_response_preserved_before_parse": true,
+    "victim_raw_and_canonical_hashes_preserved": true,
+    "action_parser_fail_closed": true
+  },
+  "campaign_policy": {
+    "post_exposure_confirmation": true,
+    "failed_predecessor_campaign": "h1-confirm-final-20260721T090531Z",
+    "fresh_campaign_required": true,
+    "old_and_new_panel_mixing_forbidden": true,
+    "registered_grid": [
+      "base-k4",
+      "dense-s0",
+      "sparse-s0",
+      "dense-s1",
+      "sparse-s1",
+      "dense-s2",
+      "sparse-s2"
+    ]
+  }
+}

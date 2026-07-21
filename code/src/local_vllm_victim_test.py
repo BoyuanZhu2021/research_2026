@@ -7,6 +7,8 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from .local_vllm_victim import (
+    FINAL_C0_TRANSPORT_ID,
+    FINAL_C0_TRANSPORT_POLICY_SHA256,
     JSON_CONTROL_ESCAPE_BAD_WORDS,
     LOCAL_FAST_PROFILE,
     LOCAL_FAST_PROFILE_ID,
@@ -42,6 +44,22 @@ class LocalVllmVictimTest(unittest.TestCase):
         )
         self.assertTrue(
             LOCAL_FAST_PROFILE["victim_runtime"]["raw_response_logged_before_parse"]
+        )
+        self.assertEqual(
+            LOCAL_FAST_PROFILE["victim_runtime"]["final_c0_transport"][
+                "transport_id"
+            ],
+            FINAL_C0_TRANSPORT_ID,
+        )
+        self.assertEqual(
+            LOCAL_FAST_PROFILE["victim_runtime"][
+                "final_c0_transport_payload_sha256"
+            ],
+            "6fb06e5896d28fd05f097f50ef98cbd7752773e6c1fe86795090e6e4361e5ebd",
+        )
+        self.assertEqual(
+            FINAL_C0_TRANSPORT_POLICY_SHA256,
+            "6fb06e5896d28fd05f097f50ef98cbd7752773e6c1fe86795090e6e4361e5ebd",
         )
 
     def test_raw_response_precedes_parse_and_ledger_validates(self):
@@ -249,6 +267,126 @@ class LocalVllmVictimTest(unittest.TestCase):
             self.assertEqual([row["event"] for row in rows], ["request", "response_raw", "response"])
             self.assertFalse(rows[-1]["accepted"])
             self.assertEqual(rows[-1]["error_type"], "JSONDecodeError")
+
+    def test_final_c0_transport_canonicalizes_exact_crash_shape(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ledger = Path(temporary) / "final-c0.jsonl"
+            client = LocalVllmVictimClient(
+                ledger,
+                final_answer_max_length=512,
+                action_string_max_length=512,
+                strict_declared_action_arguments=True,
+                final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
+            )
+            content = '{"answer": "' + ("x" * 511) + '\b", "kind": "final"}'
+            with self.assertRaises(json.JSONDecodeError) as strict_error:
+                json.loads(content)
+            self.assertEqual(strict_error.exception.pos, 523)
+            with patch(
+                "urllib.request.urlopen", return_value=self._response(content)
+            ) as urlopen:
+                result = client(
+                    [{"role": "user", "content": "x"}],
+                    structured_outputs={
+                        "json": {
+                            "oneOf": [
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "kind": {"const": "action"},
+                                        "arguments": {
+                                            "type": "object",
+                                            "properties": {
+                                                "query": {"type": "string"}
+                                            },
+                                        },
+                                    },
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "answer": {"type": "string"},
+                                        "kind": {"const": "final"},
+                                    },
+                                },
+                            ]
+                        }
+                    },
+                )
+            client.record_parse_outcome(result, status="canonical_valid")
+            self.assertEqual(urlopen.call_count, 1)
+            parsed = json.loads(result["content"])
+            self.assertEqual(parsed["kind"], "final")
+            self.assertEqual(parsed["answer"], ("x" * 511) + "\b")
+            rows = [json.loads(line) for line in ledger.read_text().splitlines()]
+            self.assertEqual(
+                [row["event"] for row in rows],
+                ["request", "response_raw", "response", "parse_outcome"],
+            )
+            self.assertIn("\\b", rows[1]["raw_response"])
+            transport = rows[2]["final_c0_transport"]
+            self.assertTrue(transport["applied"])
+            self.assertEqual(transport["strict_error_position"], 523)
+            self.assertEqual(
+                transport["controls"], [{"codepoint": "U+0008", "position": 523}]
+            )
+            summary = load_local_vllm_ledger(
+                ledger,
+                require_complete=True,
+                expected_final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
+            )
+            self.assertEqual(summary["final_c0_canonicalized"], 1)
+
+    def test_final_c0_transport_keeps_clean_content_byte_identical(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ledger = Path(temporary) / "clean.jsonl"
+            client = LocalVllmVictimClient(
+                ledger, final_c0_transport_id=FINAL_C0_TRANSPORT_ID
+            )
+            content = '{"answer":"clean","kind":"final"}'
+            with patch(
+                "urllib.request.urlopen", return_value=self._response(content)
+            ):
+                result = client(
+                    [{"role": "user", "content": "x"}],
+                    structured_outputs={"json": {"type": "object"}},
+                )
+            client.record_parse_outcome(result, status="canonical_valid")
+            self.assertEqual(result["content"], content)
+            rows = [json.loads(line) for line in ledger.read_text().splitlines()]
+            self.assertFalse(rows[2]["final_c0_transport"]["applied"])
+            summary = load_local_vllm_ledger(
+                ledger,
+                require_complete=True,
+                expected_final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
+            )
+            self.assertEqual(summary["final_c0_canonicalized"], 0)
+
+    def test_final_c0_transport_rejects_action_controls(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            ledger = Path(temporary) / "action-control.jsonl"
+            client = LocalVllmVictimClient(
+                ledger, final_c0_transport_id=FINAL_C0_TRANSPORT_ID
+            )
+            content = (
+                '{"arguments":{"query":"bad\bvalue"},'
+                '"kind":"action","tool":"retrieve"}'
+            )
+            with patch(
+                "urllib.request.urlopen", return_value=self._response(content)
+            ) as urlopen:
+                with self.assertRaises(LocalVllmVictimError):
+                    client(
+                        [{"role": "user", "content": "x"}],
+                        structured_outputs={"json": {"type": "object"}},
+                    )
+            self.assertEqual(urlopen.call_count, 1)
+            rows = [json.loads(line) for line in ledger.read_text().splitlines()]
+            self.assertEqual(
+                [row["event"] for row in rows],
+                ["request", "response_raw", "response"],
+            )
+            self.assertFalse(rows[-1]["accepted"])
 
 
 if __name__ == "__main__":

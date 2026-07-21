@@ -11,6 +11,9 @@ from h1_inprocess_confirmatory_analyze import (
 from h1_inprocess_confirmatory_eval import (
     GRID, PROFILE_ID, _load_profile_config, _tree_sha256, panel_key,
 )
+from src.local_vllm_victim import (  # noqa: E402
+    FINAL_C0_TRANSPORT_ID, FINAL_C0_TRANSPORT_POLICY_SHA256,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 CODE = ROOT / "code"
@@ -38,13 +41,18 @@ def test_grid_is_base_k4_plus_three_matched_seeds() -> None:
     ]
 
 
-def test_constrained_eval_profile_is_versioned_and_symmetric() -> None:
+def test_final_c0_profile_is_versioned_and_symmetric() -> None:
     config = _load_profile_config()
-    assert PROFILE_ID == "h1-gate-partial-confirmatory-constrained-eval-v2"
+    assert PROFILE_ID == "h1-gate-partial-confirmatory-final-c0-transport-v1"
     assert config["campaign_policy"]["registered_grid"] == [
         panel_key(arm, seed) for arm, seed in GRID
     ]
     assert config["decoder_guard"]["post_generation_repair"] is False
+    assert config["victim_transport"]["transport_id"] == FINAL_C0_TRANSPORT_ID
+    assert config["victim_transport"]["policy_payload_sha256"] == (
+        FINAL_C0_TRANSPORT_POLICY_SHA256
+    )
+    assert config["campaign_policy"]["post_exposure_confirmation"] is True
 
 
 def test_confirmatory_adapter_tree_uses_training_canonical_hash() -> None:
@@ -68,6 +76,11 @@ def test_final_authorization_binds_learning_report_and_pi_quote() -> None:
         "complete": True,
         "decision_bearing": False,
         "final_ood_read": False,
+        "post_exposure_confirmation": True,
+        "victim_final_c0_transport_id": FINAL_C0_TRANSPORT_ID,
+        "victim_final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+        ),
         "policy_registry": {panel_key(arm, seed): {} for arm, seed in GRID},
     })
     with tempfile.TemporaryDirectory() as temporary:
@@ -78,6 +91,8 @@ def test_final_authorization_binds_learning_report_and_pi_quote() -> None:
         ))
     assert authorization["pi_authorization"] == PI_AUTHORIZATION
     assert authorization["scope"] == "unlock the exact 153-goal final-OOD campaign once"
+    assert authorization["post_exposure_confirmation"] is True
+    assert authorization["victim_final_c0_transport_id"] == FINAL_C0_TRANSPORT_ID
     assert authorization["decision_rule"]["holm_family"] == [
         "dense_minus_sparse", "dense_minus_baseK", "sparse_minus_baseK",
     ]

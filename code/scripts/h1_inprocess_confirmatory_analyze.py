@@ -21,10 +21,16 @@ from src.domains.tooluse_injection import ToolUseInjectionDomain  # noqa: E402
 from src.inprocess_curriculum_protocol import (  # noqa: E402
     AUTHORIZED_INSTANCE, file_sha256, seal_payload, validate_seal,
 )
-from src.local_vllm_victim import load_local_vllm_ledger  # noqa: E402
+from src.local_vllm_victim import (  # noqa: E402
+    FINAL_C0_TRANSPORT_ID, FINAL_C0_TRANSPORT_POLICY_SHA256,
+    load_local_vllm_ledger,
+)
 
 
-PI_AUTHORIZATION = "批准多 seed／final OOD 的正式确认实验"
+PI_AUTHORIZATION = (
+    "批准 h1-victim-final-c0-canonicalization-v1，我立即实现回归测试、部署新 profile，"
+    "完整重跑七组 learning，创建新 final 授权并完成 153 条 post-exposure OOD。"
+)
 BOOTSTRAP_SAMPLES = 20_000
 ALPHA = 0.05
 
@@ -47,6 +53,14 @@ def load_panel(path: str | Path, *, expected_phase: str) -> dict:
     manifest = validate_seal(json.loads((root / "artifact_manifest.json").read_text(encoding="utf-8")))
     if config.get("profile_id") != PROFILE_ID or result.get("profile_id") != PROFILE_ID:
         raise ValueError("confirmatory panel profile mismatch")
+    if (
+        config.get("post_exposure_confirmation") is not True
+        or result.get("post_exposure_confirmation") is not True
+        or config.get("victim_final_c0_transport_id") != FINAL_C0_TRANSPORT_ID
+        or config.get("victim_final_c0_transport_policy_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
+    ):
+        raise ValueError("confirmatory final C0 transport identity mismatch")
     if config.get("phase") != expected_phase or result.get("phase") != expected_phase:
         raise ValueError("confirmatory panel phase mismatch")
     if result.get("run_config_payload_sha256") != config.get("payload_sha256"):
@@ -81,7 +95,11 @@ def load_panel(path: str | Path, *, expected_phase: str) -> dict:
         ).hexdigest()
         if digest != item["raw_response_token_ids_sha256"]:
             raise ValueError("raw attacker response token IDs drifted")
-    victim = load_local_vllm_ledger(root / "raw_victim_ledger.jsonl", require_complete=True)
+    victim = load_local_vllm_ledger(
+        root / "raw_victim_ledger.jsonl",
+        require_complete=True,
+        expected_final_c0_transport_id=FINAL_C0_TRANSPORT_ID,
+    )
     if victim != result.get("victim_ledger"):
         raise ValueError("raw victim ledger summary mismatch")
     return {"root": str(root), "config": config, "result": result, "rows": rows}
@@ -141,6 +159,13 @@ def _validate_grid(panels: list[dict], *, phase: str) -> dict[str, dict]:
         panel["config"]["attacker_decoder_guard"]["payload_sha256"]
         for panel in panels
     }
+    victim_transports = {
+        (
+            panel["config"]["victim_final_c0_transport_id"],
+            panel["config"]["victim_final_c0_transport_policy_sha256"],
+        )
+        for panel in panels
+    }
     if (
         len(campaigns) != 1
         or len(deployments) != 1
@@ -148,6 +173,8 @@ def _validate_grid(panels: list[dict], *, phase: str) -> dict[str, dict]:
         or len(gpu_uuids) != 1
         or len(profile_configs) != 1
         or len(guard_payloads) != 1
+        or victim_transports
+        != {(FINAL_C0_TRANSPORT_ID, FINAL_C0_TRANSPORT_POLICY_SHA256)}
     ):
         raise ValueError("confirmatory campaign runtime identity drift")
     if any(panel["result"]["phase"] != phase for panel in panels):
@@ -174,6 +201,7 @@ def build_learning_report(panel_dirs: list[str]) -> dict:
         "profile_id": PROFILE_ID,
         "complete": True,
         "decision_bearing": False,
+        "post_exposure_confirmation": True,
         "final_ood_read": False,
         "campaign_id": panels[0]["result"]["campaign_id"],
         "instance_id": AUTHORIZED_INSTANCE,
@@ -181,6 +209,10 @@ def build_learning_report(panel_dirs: list[str]) -> dict:
         "policy_registry": policy_registry,
         "profile_config_file_sha256": panels[0]["config"]["profile_config_file_sha256"],
         "attacker_decoder_guard": panels[0]["config"]["attacker_decoder_guard"],
+        "victim_final_c0_transport_id": FINAL_C0_TRANSPORT_ID,
+        "victim_final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+        ),
         "metrics": metrics,
         "offline_oracle_replay": "PASS",
         "scope": "calibration integrity only; no tuning, seed selection, or formal H1 decision",
@@ -196,6 +228,11 @@ def build_final_authorization(learning_report_path: str | Path, *, final_campaig
         or report.get("complete") is not True
         or report.get("decision_bearing") is not False
         or report.get("final_ood_read") is not False
+        or report.get("post_exposure_confirmation") is not True
+        or report.get("victim_final_c0_transport_id")
+        != FINAL_C0_TRANSPORT_ID
+        or report.get("victim_final_c0_transport_policy_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
     ):
         raise ValueError("authorization requires a complete learning report")
     return seal_payload({
@@ -204,6 +241,13 @@ def build_final_authorization(learning_report_path: str | Path, *, final_campaig
         "profile_id": PROFILE_ID,
         "instance_id": AUTHORIZED_INSTANCE,
         "scope": "unlock the exact 153-goal final-OOD campaign once",
+        "post_exposure_confirmation": True,
+        "predecessor_final_campaign": "h1-confirm-final-20260721T090531Z",
+        "predecessor_status": "engineering-invalid-after-first-read",
+        "victim_final_c0_transport_id": FINAL_C0_TRANSPORT_ID,
+        "victim_final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+        ),
         "pi_authorization": PI_AUTHORIZATION,
         "final_campaign_id": final_campaign_id,
         "learning_report_file_sha256": file_sha256(path),
@@ -275,7 +319,15 @@ def _contrast(values: dict[str, dict[str, float]], left: str, right: str,
 
 def analyze_final(panel_dirs: list[str], authorization_path: str | Path) -> dict:
     authorization = validate_seal(json.loads(Path(authorization_path).read_text(encoding="utf-8")))
-    if authorization.get("kind") != FINAL_AUTH_KIND or authorization.get("pi_authorization") != PI_AUTHORIZATION:
+    if (
+        authorization.get("kind") != FINAL_AUTH_KIND
+        or authorization.get("pi_authorization") != PI_AUTHORIZATION
+        or authorization.get("post_exposure_confirmation") is not True
+        or authorization.get("victim_final_c0_transport_id")
+        != FINAL_C0_TRANSPORT_ID
+        or authorization.get("victim_final_c0_transport_policy_sha256")
+        != FINAL_C0_TRANSPORT_POLICY_SHA256
+    ):
         raise ValueError("final analysis authorization mismatch")
     loaded = [load_panel(path, expected_phase="final_ood") for path in panel_dirs]
     policy_registry = _validate_grid(loaded, phase="final_ood")
@@ -314,6 +366,11 @@ def analyze_final(panel_dirs: list[str], authorization_path: str | Path) -> dict
         "profile_id": PROFILE_ID,
         "decision_bearing": True,
         "final_ood_read": True,
+        "post_exposure_confirmation": True,
+        "victim_final_c0_transport_id": FINAL_C0_TRANSPORT_ID,
+        "victim_final_c0_transport_policy_sha256": (
+            FINAL_C0_TRANSPORT_POLICY_SHA256
+        ),
         "n_goals": 153,
         "seeds_per_trained_arm": 3,
         "base_k": 4,
@@ -324,7 +381,11 @@ def analyze_final(panel_dirs: list[str], authorization_path: str | Path) -> dict
         "means": means,
         "h1_supported": supported,
         "verdict": "SUPPORTED" if supported else "NOT_SUPPORTED",
-        "scope_limit": "post-hoc frozen gate-partial calibration training setup; honest untouched final-OOD test at ds/base,m=2 only",
+        "scope_limit": (
+            "post-exposure confirmation at ds/base,m=2; the first untouched read was "
+            "consumed by engineering-invalid campaign h1-confirm-final-20260721T090531Z; "
+            "no extrapolation to m>=3"
+        ),
     })
 
 
